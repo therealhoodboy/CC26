@@ -1,9 +1,21 @@
 #import <UIKit/UIKit.h>
 #import "Headers/NSTask.h"
-#include <spawn.h>
 #import <objc/runtime.h>
 #import <objc/message.h>
+#include <spawn.h>
+#include <rootless.h>
 
+static NSString *domain = @"com.cureux.cc26";
+static NSString *preferencesNotification = @"com.cureux.cc26/preferences.changed";
+
+// preferences variables
+static BOOL enabled;
+static BOOL enableTopButtons;
+
+@interface NSUserDefaults (CC26)
+- (id)objectForKey:(NSString *)key inDomain:(NSString *)domain;
+- (void)setObject:(id)value forKey:(NSString *)key inDomain:(NSString *)domain;
+@end
 
 @interface MTMaterialLayer : CALayer
 @property (nonatomic, copy, readwrite) NSString *recipeName;
@@ -188,7 +200,7 @@ void applyPrismToLayer(CALayer *layer) {
 }
 
 
-
+%group CC26
 %hook MTMaterialLayer
 
 - (void)_configureIfNecessaryWithSettingsInterpolator:(MTMaterialSettingsInterpolator *)interpolator {
@@ -589,7 +601,6 @@ dispatch_async(dispatch_get_main_queue(), ^{
 %end
 
 %hook CCUIModularControlCenterOverlayViewController
-
 - (void)setPresentationState:(NSInteger)state {
     %orig;
 
@@ -601,121 +612,146 @@ dispatch_async(dispatch_get_main_queue(), ^{
     CGFloat safeLeft = view.window.safeAreaInsets.left ?: 36;
     CGFloat safeRight = view.window.safeAreaInsets.right ?: 36;
 
-    // Plus-Button
-    UIButton *plus = [view viewWithTag:999];
-    if (!plus) {
-        plus = [UIButton buttonWithType:UIButtonTypeSystem];
-        plus.tag = 999;
+    if (enableTopButtons) {
+        // Plus-Button
+        UIButton *plus = [view viewWithTag:999];
+        if (!plus) {
+            NSDictionary *addColorDict = [[NSUserDefaults standardUserDefaults] objectForKey:@"addButtonColorDict" inDomain:domain];
+            UIColor *addColor = (addColorDict != nil) ? [UIColor colorWithRed:[addColorDict[@"red"] floatValue] green:[addColorDict[@"green"] floatValue] blue:[addColorDict[@"blue"] floatValue] alpha:1.0] : [UIColor whiteColor];
 
-        UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:iconSize weight:UIImageSymbolWeightRegular];
-        UIImage *plusImage = [[UIImage systemImageNamed:@"plus"] imageByApplyingSymbolConfiguration:config];
+            plus = [UIButton buttonWithType:UIButtonTypeSystem];
+            plus.tag = 999;
 
-        [plus setImage:plusImage forState:UIControlStateNormal];
-        plus.tintColor = [UIColor whiteColor];
-        plus.alpha = 0.0;
-        plus.transform = CGAffineTransformMakeScale(0.6, 0.6);
-        plus.frame = CGRectMake(safeLeft, yOffset - 10, buttonSize, buttonSize);
+            UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:iconSize weight:UIImageSymbolWeightRegular];
+            UIImage *plusImage = [[UIImage systemImageNamed:@"plus"] imageByApplyingSymbolConfiguration:config];
 
-        [plus addAction:[UIAction actionWithHandler:^(__kindof UIAction *action) {
-            UIImpactFeedbackGenerator *gen = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
-            [gen impactOccurred];
-            [((SpringBoard *)[%c(SpringBoard) sharedApplication]) applicationOpenURL:[NSURL URLWithString:@"prefs:root=ControlCenter&path=CUSTOMIZE_CONTROLS"]];
-            NSLog(@"[+] Plus tapped");
-        }] forControlEvents:UIControlEventTouchUpInside];
+            [plus setImage:plusImage forState:UIControlStateNormal];
+            plus.tintColor = addColor;
+            plus.alpha = 0.0;
+            plus.transform = CGAffineTransformMakeScale(0.6, 0.6);
+            plus.frame = CGRectMake(safeLeft, yOffset - 10, buttonSize, buttonSize);
 
-        [view addSubview:plus];
-    }
-
-    // Power-Button
-    UIButton *power = [view viewWithTag:998];
-    if (!power) {
-        power = [UIButton buttonWithType:UIButtonTypeSystem];
-        power.tag = 998;
-
-        UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:iconSize weight:UIImageSymbolWeightRegular];
-        UIImage *powerImage = [[UIImage systemImageNamed:@"power"] imageByApplyingSymbolConfiguration:config];
-
-        [power setImage:powerImage forState:UIControlStateNormal];
-        power.tintColor = [UIColor redColor];
-        power.alpha = 0.0;
-        power.transform = CGAffineTransformMakeScale(0.6, 0.6);
-        power.frame = CGRectMake(view.bounds.size.width - safeRight - buttonSize, yOffset - 10, buttonSize, buttonSize);
-
-        if (@available(iOS 14.0, *)) {
-            UIAction *respringAction = [UIAction actionWithTitle:@"Respring"
-                                                           image:[UIImage systemImageNamed:@"arrow.clockwise.circle"]
-                                                      identifier:nil
-                                                         handler:^(__kindof UIAction *action) {
-                pid_t pid;
-                const char *args[] = {"sbreload", NULL};
-                posix_spawn(&pid, "/usr/bin/sbreload", NULL, NULL, (char *const *)args, NULL);
-            }];
-
-            UIAction *uicacheAction = [UIAction actionWithTitle:@"UICache"
-                                                          image:[UIImage systemImageNamed:@"paintbrush.fill"]
-                                                     identifier:nil
-                                                        handler:^(__kindof UIAction *action) {
-                pid_t pid;
-                const char *args[] = {"uicache", "-a", NULL};
-                posix_spawn(&pid, "/usr/bin/uicache", NULL, NULL, (char *const *)args, NULL);
-            }];
-
-            UIAction *userspaceAction = [UIAction actionWithTitle:@"Userspace Reboot"
-                                                            image:[UIImage systemImageNamed:@"bolt.fill"]
-                                                       identifier:nil
-                                                          handler:^(__kindof UIAction *action) {
-                pid_t pid;
-                const char *args[] = {"launchctl", "reboot", "userspace", NULL};
-                posix_spawn(&pid, "/bin/launchctl", NULL, NULL, (char *const *)args, NULL);
-            }];
-
-            UIMenu *menu = [UIMenu menuWithTitle:@"Choose Action"
-                                         children:@[respringAction, uicacheAction, userspaceAction]];
-            [power setMenu:menu];
-            [power setShowsMenuAsPrimaryAction:YES];
-
-            [power addAction:[UIAction actionWithHandler:^(__kindof UIAction *action) {
-                UIImpactFeedbackGenerator *gen = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleHeavy];
+            [plus addAction:[UIAction actionWithHandler:^(__kindof UIAction *action) {
+                UIImpactFeedbackGenerator *gen = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
                 [gen impactOccurred];
-            }] forControlEvents:UIControlEventPrimaryActionTriggered];
+                [((SpringBoard *)[%c(SpringBoard) sharedApplication]) applicationOpenURL:[NSURL URLWithString:@"prefs:root=ControlCenter&path=CUSTOMIZE_CONTROLS"]];
+                NSLog(@"[+] Plus tapped");
+            }] forControlEvents:UIControlEventTouchUpInside];
+
+            [view addSubview:plus];
         }
 
-        [view addSubview:power];
-    }
+        // Power-Button
+        UIButton *power = [view viewWithTag:998];
+        if (!power) {
+            NSDictionary *powerColorDict = [[NSUserDefaults standardUserDefaults] objectForKey:@"powerButtonColorDict" inDomain:domain];
+            UIColor *powerColor = (powerColorDict != nil) ? [UIColor colorWithRed:[powerColorDict[@"red"] floatValue] green:[powerColorDict[@"green"] floatValue] blue:[powerColorDict[@"blue"] floatValue] alpha:1.0] : [UIColor systemRedColor];
 
-    // Update Frames (z. B. bei Rotation)
-    plus.frame = CGRectMake(safeLeft - 10, yOffset - 10, buttonSize + 15, buttonSize + 15);
-    power.frame = CGRectMake(view.bounds.size.width - safeRight - buttonSize - 10, yOffset - 10, buttonSize + 15, buttonSize + 15);
+            power = [UIButton buttonWithType:UIButtonTypeSystem];
+            power.tag = 998;
 
-    // Animation je nach Zustand
-    switch (state) {
-        case 1: {
-            [UIView animateWithDuration:0.45
-                                  delay:0.0
-                 usingSpringWithDamping:0.7
-                  initialSpringVelocity:0.5
-                                options:UIViewAnimationOptionCurveEaseOut
-                             animations:^{
-                plus.alpha = 1.0;
-                plus.transform = CGAffineTransformIdentity;
-                power.alpha = 1.0;
-                power.transform = CGAffineTransformIdentity;
-            } completion:nil];
-            break;
+            UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:iconSize weight:UIImageSymbolWeightRegular];
+            UIImage *powerImage = [[UIImage systemImageNamed:@"power"] imageByApplyingSymbolConfiguration:config];
+
+            [power setImage:powerImage forState:UIControlStateNormal];
+            power.tintColor = powerColor;
+            power.alpha = 0.0;
+            power.transform = CGAffineTransformMakeScale(0.6, 0.6);
+            power.frame = CGRectMake(view.bounds.size.width - safeRight - buttonSize, yOffset - 10, buttonSize, buttonSize);
+
+            if (@available(iOS 14.0, *)) {
+                UIAction *respringAction = [UIAction actionWithTitle:@"Respring"
+                                                            image:[UIImage systemImageNamed:@"arrow.clockwise.circle"]
+                                                        identifier:nil
+                                                            handler:^(__kindof UIAction *action) {
+                    pid_t pid;
+                    const char *args[] = {"sbreload", NULL};
+                    posix_spawn(&pid, ROOT_PATH("/usr/bin/sbreload"), NULL, NULL, (char *const *)args, NULL);
+                }];
+
+                UIAction *uicacheAction = [UIAction actionWithTitle:@"UICache"
+                                                            image:[UIImage systemImageNamed:@"paintbrush.fill"]
+                                                        identifier:nil
+                                                            handler:^(__kindof UIAction *action) {
+                    pid_t pid;
+                    const char *args[] = {"uicache", "-a", NULL};
+                    posix_spawn(&pid, ROOT_PATH("/usr/bin/uicache"), NULL, NULL, (char *const *)args, NULL);
+                }];
+
+                UIAction *userspaceAction = [UIAction actionWithTitle:@"Userspace Reboot"
+                                                                image:[UIImage systemImageNamed:@"bolt.fill"]
+                                                        identifier:nil
+                                                            handler:^(__kindof UIAction *action) {
+                    pid_t pid;
+                    const char *args[] = {"launchctl", "reboot", "userspace", NULL};
+                    posix_spawn(&pid, ROOT_PATH("/bin/launchctl"), NULL, NULL, (char *const *)args, NULL);
+                }];
+
+                UIMenu *menu = [UIMenu menuWithTitle:@"Choose Action"
+                                            children:@[respringAction, uicacheAction, userspaceAction]];
+                [power setMenu:menu];
+                [power setShowsMenuAsPrimaryAction:YES];
+
+                [power addAction:[UIAction actionWithHandler:^(__kindof UIAction *action) {
+                    UIImpactFeedbackGenerator *gen = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleHeavy];
+                    [gen impactOccurred];
+                }] forControlEvents:UIControlEventPrimaryActionTriggered];
+            }
+
+            [view addSubview:power];
         }
-        case 3: {
-            [UIView animateWithDuration:0.2 animations:^{
-                plus.alpha = 0.0;
+
+        // Update Frames (z. B. bei Rotation)
+        plus.frame = CGRectMake(safeLeft - 10, yOffset - 10, buttonSize + 15, buttonSize + 15);
+        power.frame = CGRectMake(view.bounds.size.width - safeRight - buttonSize - 10, yOffset - 10, buttonSize + 15, buttonSize + 15);
+
+        // Animation je nach Zustand
+        switch (state) {
+            case 1: {
                 plus.transform = CGAffineTransformMakeScale(0.6, 0.6);
-                power.alpha = 0.0;
                 power.transform = CGAffineTransformMakeScale(0.6, 0.6);
-            }];
-            break;
+                [UIView animateWithDuration:0.45
+                                    delay:0.0
+                    usingSpringWithDamping:0.7
+                    initialSpringVelocity:0.5
+                                    options:UIViewAnimationOptionCurveEaseOut
+                                animations:^{
+                    plus.alpha = 1.0;
+                    plus.transform = CGAffineTransformIdentity;
+                    power.alpha = 1.0;
+                    power.transform = CGAffineTransformIdentity;
+                } completion:nil];
+                break;
+            }
+            case 3: {
+                [UIView animateWithDuration:0.2 animations:^{
+                    plus.alpha = 0.0;
+                    plus.transform = CGAffineTransformMakeScale(0.6, 0.6);
+                    power.alpha = 0.0;
+                    power.transform = CGAffineTransformMakeScale(0.6, 0.6);
+                }];
+                break;
+            }
+            default:
+                break;
         }
-        default:
-            break;
     }
 }
 
 %end
+%end
 
+static void loadPreferences(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
+    NSNumber *enabledValue = (NSNumber *)[[NSUserDefaults standardUserDefaults] objectForKey:@"enabled" inDomain:domain];
+    enabled = (enabledValue) ? [enabledValue boolValue] : NO;
+    NSNumber *enableTopButtonsValue = (NSNumber *)[[NSUserDefaults standardUserDefaults] objectForKey:@"enableTopButtons" inDomain:domain];
+    enableTopButtons = (enableTopButtonsValue) ? [enableTopButtonsValue boolValue] : YES;
+}
+
+%ctor {
+    loadPreferences(NULL, NULL, NULL, NULL, NULL); // Load prefs
+    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, loadPreferences, (CFStringRef)preferencesNotification, NULL, CFNotificationSuspensionBehaviorCoalesce);
+    if (enabled) {
+        %init(CC26)
+    }
+}

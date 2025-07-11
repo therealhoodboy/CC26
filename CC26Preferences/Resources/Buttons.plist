@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>items</key>
+	<array>
+        <dict>
+			<key>cell</key>
+        	<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.cureux.cc26</string>
+			<key>key</key>
+			<string>enableTopButtons</string>
+			<key>label</key>
+			<string>Enable Top Buttons</string>
+			<key>PostNotification</key>
+            <string>com.cureux.cc26/preferences.changed</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string></string>
+		</dict>
+		<dict>
+            <key>PostNotification</key>
+            <string>com.cureux.cc26/preferences.changed</string>
+            <key>cellClass</key>
+            <string>CC26ColorCell</string>
+            <key>defaults</key>
+            <string>com.cureux.cc26</string>
+            <key>height</key>
+            <string>60</string>
+            <key>id</key>
+            <string>addButtonColor</string>
+            <key>key</key>
+            <string>addButtonColor</string>
+            <key>label</key>
+            <string>Add Button Color</string>
+        </dict>
+		<dict>
+            <key>PostNotification</key>
+            <string>com.cureux.cc26/preferences.changed</string>
+            <key>cellClass</key>
+            <string>CC26ColorCell</string>
+            <key>defaults</key>
+            <string>com.cureux.cc26</string>
+            <key>height</key>
+            <string>60</string>
+            <key>id</key>
+            <string>powerButtonColor</string>
+            <key>key</key>
+            <string>powerButtonColor</string>
+            <key>label</key>
+            <string>Power Button Color</string>
+        </dict>
+	</array>
+	<key>title</key>
+	<string>Top Buttons</string>
+</dict>
+</plist>

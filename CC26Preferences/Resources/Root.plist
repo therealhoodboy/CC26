@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>items</key>
+	<array>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string></string>
+		</dict>
+		<dict>
+            <key>cell</key>
+            <string>PSLinkListCell</string>
+            <key>default</key>
+            <string></string>
+            <key>defaults</key>
+            <string>com.cureux.cc26</string>
+            <key>detail</key>
+            <string>CC26ButtonsListController</string>
+            <key>height</key>
+            <string>60</string>
+            <key>label</key>
+            <string>Top Buttons</string>
+        </dict>
+		<dict>
+            <key>cell</key>
+            <string>PSLinkListCell</string>
+            <key>default</key>
+            <string></string>
+            <key>defaults</key>
+            <string>com.cureux.cc26</string>
+            <key>detail</key>
+            <string>CC26ModulesListController</string>
+            <key>height</key>
+            <string>60</string>
+            <key>label</key>
+            <string>Modules</string>
+        </dict>
+		<dict>
+            <key>cell</key>
+            <string>PSLinkListCell</string>
+            <key>default</key>
+            <string></string>
+            <key>defaults</key>
+            <string>com.cureux.cc26</string>
+            <key>detail</key>
+            <string>CC26SlidersListController</string>
+            <key>height</key>
+            <string>60</string>
+            <key>label</key>
+            <string>Sliders</string>
+        </dict>
+		<dict>
+            <key>cell</key>
+            <string>PSLinkListCell</string>
+            <key>default</key>
+            <string></string>
+            <key>defaults</key>
+            <string>com.cureux.cc26</string>
+            <key>detail</key>
+            <string>CC26BlurListController</string>
+            <key>height</key>
+            <string>60</string>
+            <key>label</key>
+            <string>Blur Configuration</string>
+        </dict>
+	</array>
+	<key>title</key>
+	<string>CC26</string>
+</dict>
+</plist>

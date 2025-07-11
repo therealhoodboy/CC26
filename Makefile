@@ -3,7 +3,7 @@ DEBUG = 0
 FINALPACKAGE = 1
 ARCHS = arm64 arm64e
 TARGET := iphone:clang:latest:14.0
-INSTALL_TARGET_PROCESSES = SpringBoard
+INSTALL_TARGET_PROCESSES = SpringBoard Preferences
 
 # Device targeting based on build mode
 ifeq ($(ROOTLESS),1)
@@ -31,3 +31,5 @@ $(TWEAK_NAME)_CFLAGS = -fobjc-arc
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 
+SUBPROJECTS += CC26Preferences
+include $(THEOS_MAKE_PATH)/aggregate.mk
