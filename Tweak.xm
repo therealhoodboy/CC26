@@ -228,7 +228,7 @@ void applyPrismToLayer(CALayer *layer) {
 
 %hook _UIContextMenuCellContentView
 
-//set round context menu items
+//set round context menu items - working but underlying layer is not rounded
 - (void)didMoveToWindow {
     %orig;    
     self.layer.borderWidth = 0.5;
@@ -236,6 +236,22 @@ void applyPrismToLayer(CALayer *layer) {
     self.layer.cornerRadius = 20.0;
     self.layer.borderColor = [UIColor colorWithWhite:0.9 alpha:0.2].CGColor;
     self.layer.masksToBounds = YES; 
+}
+
+%end
+
+
+%hook _UIContentMenuCell
+
+- (void)didMoveToWindow {
+    %orig;
+    
+    // Style the cell layer -- Why is this not working?
+    self.layer.cornerRadius = 20.0;
+    self.layer.borderWidth = 1.0;
+    self.layer.borderColor = [UIColor colorWithWhite:0.9 alpha:0.3].CGColor;
+    self.layer.backgroundColor = [UIColor colorWithWhite:0.95 alpha:0.25].CGColor;
+    self.layer.masksToBounds = YES;
 }
 
 %end
