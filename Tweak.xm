@@ -34,6 +34,9 @@ static BOOL enableTopButtons;
 @interface CCUIOverlayViewController : UIViewController @end
 @interface CCUIDisplayModuleViewController : UIViewController @end
 @interface CCUIModularControlCenterOverlayViewController : CCUIOverlayViewController @end
+@interface _UIContextMenuListView : UIView @end
+@interface _UIContextMenuCellContentView : UIView @end
+@interface _UIContentMenuCell : UIView @end
 
 @interface UIView (PrivateHierarchy)
 - (UIViewController *)_viewControllerForAncestor;
@@ -199,8 +202,45 @@ void applyPrismToLayer(CALayer *layer) {
     gradient.cornerRadius = layer.cornerRadius;
 }
 
-
 %group CC26
+
+
+%hook _UIContextMenuListView
+
+- (void)didMoveToWindow {
+    %orig;
+    //Disable background 
+     UIVisualEffectView *backgroundView = [self valueForKey:@"_backgroundView"];
+    if ([backgroundView isKindOfClass:[UIVisualEffectView class]]) {
+        backgroundView.hidden = YES;
+    }
+
+    //try to set more margins, doesnt change anything despite being correctly set
+     if ([self respondsToSelector:@selector(setValue:forKey:)]) {
+        NSDirectionalEdgeInsets newMargins = NSDirectionalEdgeInsetsMake(20, 16, 20, 16);
+        NSValue *insetsValue = [NSValue valueWithDirectionalEdgeInsets:newMargins];
+        [self setValue:insetsValue forKey:@"contentMargins"];
+    }
+}
+
+%end
+
+
+%hook _UIContextMenuCellContentView
+
+//set round context menu items
+- (void)didMoveToWindow {
+    %orig;    
+    self.layer.borderWidth = 0.5;
+    self.layer.backgroundColor = [UIColor colorWithRed:1.0 green:0.98 blue:0.95 alpha:0.25].CGColor; // Warm white
+    self.layer.cornerRadius = 20.0;
+    self.layer.borderColor = [UIColor colorWithWhite:0.9 alpha:0.2].CGColor;
+    self.layer.masksToBounds = YES; 
+}
+
+%end
+
+
 %hook MTMaterialLayer
 
 - (void)_configureIfNecessaryWithSettingsInterpolator:(MTMaterialSettingsInterpolator *)interpolator {
@@ -222,7 +262,12 @@ void applyPrismToLayer(CALayer *layer) {
         [base setValue:@(1.1) forKey:@"saturation"];
     } else if ([self.recipeName isEqualToString:@"auxiliary"]) {
         [base setValue:@(2.3) forKey:@"blurRadius"];
-    }
+    }    else if ([self.recipeName isEqualToString:@"platformContentDark"]) {
+       // [base setValue:@(-0.04) forKey:@"brightness"];
+        [base setValue:@(0.0) forKey:@"blurRadius"];
+        [base setValue:@(0.0) forKey:@"zoom"];
+        [base setValue:@(1.0) forKey:@"saturation"];
+        [base setValue:@(0) forKey:@"luminanceAmount"];    }
 }
 
 - (void)layoutSublayers {
