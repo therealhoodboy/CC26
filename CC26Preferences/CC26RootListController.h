@@ -5,6 +5,7 @@
 #import <Preferences/PSControlTableCell.h>
 #import <Preferences/PSSwitchTableCell.h>
 #include <rootless.h>
+#include <objc/runtime.h>
 
 static NSString *domain = @"com.cureux.cc26";
 
@@ -21,7 +22,6 @@ static inline UIColor *colorFromHexString(NSString *hexString) {
     unsigned int hexint = intFromHexString(hexString);
 
     UIColor *color = [UIColor colorWithRed:((CGFloat) ((hexint & 0xFF0000) >> 16))/255 green:((CGFloat) ((hexint & 0xFF00) >> 8))/255 blue:((CGFloat) (hexint & 0xFF))/255 alpha:1.0];
-
     return color;
 }
 
@@ -48,8 +48,28 @@ static inline UIColor *colorFromHexString(NSString *hexString) {
 - (void)setObject:(id)value forKey:(NSString *)key inDomain:(NSString *)domain;
 @end
 
+@interface CALayer (CC26)
+@property BOOL continuousCorners;
+@property BOOL invertsShadow;
+@property (copy) NSString *cornerCurve;
+@end
+
 @interface UIView (CC26Preferences)
 - (UIViewController *)_viewControllerForAncestor;
+@end
+
+@interface MTMaterialView : UIView
+@property (nonatomic, getter=isInPlaceFilteringEnabled) BOOL inPlaceFilteringEnabled;
+@property (nonatomic, getter=isRecipeDynamic) BOOL recipeDynamic;
+@property (copy, nonatomic) NSString *recipeName;
+@property (nonatomic) NSInteger recipe; 
+@property (nonatomic) CGFloat weighting;
+@property (copy, nonatomic) NSString *groupName;
+@property (copy, nonatomic) NSString *groupNameBase; 
++ (id)materialViewWithRecipeNamed:(id)arg0;
++ (id)materialViewWithRecipe:(NSInteger)arg0 configuration:(NSInteger)arg1 initialWeighting:(CGFloat)arg2;
++ (id)materialViewWithRecipeNamed:(id)arg0 inBundle:(id)arg1 configuration:(NSInteger)arg2 initialWeighting:(CGFloat)arg3 scaleAdjustment:(id)arg4;
++ (id)materialViewWithRecipeNamed:(id)arg0 inBundle:(id)arg1 options:(NSUInteger)arg2 initialWeighting:(CGFloat)arg3 scaleAdjustment:(id)arg4;
 @end
 
 @interface CC26RootListController : PSListController {
@@ -70,6 +90,11 @@ static inline UIColor *colorFromHexString(NSString *hexString) {
 @end
 
 @interface CC26ModulesListController : CC26Controller
+@property (nonatomic, strong) UIView *headerView;
+@property (nonatomic, strong) UIImageView *headerImageView;
+@property (nonatomic, strong) MTMaterialView *overlayMaterialView;
+@property (nonatomic, strong) MTMaterialView *primaryModuleView;
+@property (nonatomic, strong) MTMaterialView *secondaryModuleView;
 @end
 
 @interface CC26SlidersListController : CC26Controller

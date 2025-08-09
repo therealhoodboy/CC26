@@ -13,6 +13,11 @@ static BOOL enabled;
 static BOOL enableTopButtons;
 static BOOL colorSliderGlyphs;
 
+typedef struct CCUILayoutSize {
+    NSUInteger width;
+    NSUInteger height;
+} CCUILayoutSize;
+
 @interface NSUserDefaults (CC26)
 - (id)objectForKey:(NSString *)key inDomain:(NSString *)domain;
 - (void)setObject:(id)value forKey:(NSString *)key inDomain:(NSString *)domain;
@@ -44,8 +49,27 @@ static BOOL colorSliderGlyphs;
 - (void)cc26_setGlyphValue:(float)value;
 @end
 
+@interface CCUIModuleInstanceManager : NSObject {
+    NSMutableDictionary *_moduleInstanceByIdentifier;
+}
++ (instancetype)sharedInstance;
+@end
+
+@interface CCUIContentModuleContainerViewController : UIViewController 
+@property (copy, nonatomic) NSString *moduleIdentifier; 
+@end
+
+@interface CCUIModuleCollectionViewController : UIViewController 
+- (NSArray<NSValue *> *)_sizesForModuleIdentifiers:(NSArray<NSString *> *)moduleIdentifiers moduleInstanceByIdentifier:(NSDictionary *)moduleInstanceByIdentifier interfaceOrientation:(long long)interfaceOrientation; // Added by CCSupport, added as requirement in control file
+@end
+
 @interface UIView (PrivateHierarchy)
 - (UIViewController *)_viewControllerForAncestor;
+@end
+
+@interface NSValue (ControlCenterUI)
++ (NSValue *)ccui_valueWithLayoutSize:(CCUILayoutSize)layoutSize;
+- (CCUILayoutSize)ccui_sizeValue;
 @end
 
 @interface CALayer (Private)

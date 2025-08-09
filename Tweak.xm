@@ -2,6 +2,10 @@
 
 #pragma mark - Calculation of border radius for different modules
 
+BOOL containsKey(NSString *key) {
+    return [[[[NSUserDefaults standardUserDefaults] persistentDomainForName:domain] allKeys] containsObject:key];
+}
+
 CGFloat calculateArea(CGRect visibleRect) {
     return visibleRect.size.width * visibleRect.size.height;
 }
@@ -61,18 +65,51 @@ CGFloat calculatedRadius(CGRect visibleRect, CGFloat fallbackRadius) {
 }
 
 CGFloat getModuleRadius(UIView *moduleView) {
-    CGFloat width = moduleView.frame.size.width;
-    CGFloat height = moduleView.frame.size.height;
-    if ((width < 100 && height < 100) && width == height) { // 1x1 module
-        return width / 2;
-    } else if ((width > height) || (height > width)) {
-        return fminf(width, height) / 2; // Rectangular module
-    } else if ((width > 100 && height > 100) && width == height) { // large square module
-        return width / 4;
-    } else  if (width > 100 && height > 100) { // 1x1 module
-        return width / 4;
-    }
-    return 0; // may need more cases for odd shaped modules such as CCSupport's 2x4 module
+
+    /* CCUIModuleInstanceManager *instanceManager = [%c(CCUIModuleInstanceManager) sharedInstance];
+
+    CCUIContentModuleContainerViewController *containerViewController = (CCUIContentModuleContainerViewController *)[moduleView _viewControllerForAncestor];
+    CCUIModuleCollectionViewController *collectionViewController = (CCUIModuleCollectionViewController *)containerViewController.parentViewController;
+
+    NSMutableDictionary *moduleInstanceByIdentifier = MSHookIvar<NSMutableDictionary *>(instanceManager, "_moduleInstanceByIdentifier");
+
+    NSString *moduleIdentifier = containerViewController.moduleIdentifier;
+
+    NSArray *moduleSizes = [collectionViewController _sizesForModuleIdentifiers:@[moduleIdentifier] moduleInstanceByIdentifier:moduleInstanceByIdentifier interfaceOrientation:0];
+
+    NSValue *sizeValue = [moduleSizes firstObject];
+
+    if ([sizeValue respondsToSelector:@selector(ccui_sizeValue)]) {
+        CCUILayoutSize layoutSize = [sizeValue ccui_sizeValue];
+        
+        NSUInteger width = layoutSize.width;
+        NSUInteger height = layoutSize.height;
+
+        if (width >= 1 && height >= 1) {
+            if ((width || height) == 1) {
+                return fminf(width, height) / 2; // 1x1 module
+            } else {
+                return 36;
+            }
+        }
+        NSLog(@"[+] CC26 DEBUG: ID -> %@, Width -> %ld, Height -> %ld", moduleIdentifier, layoutSize.width, layoutSize.height);
+    } */
+
+    CGFloat moduleWidth = moduleView.frame.size.width;
+    CGFloat moduleHeight = moduleView.frame.size.height;
+
+    CGFloat retVal = 36;
+
+    if ((moduleWidth < 100 && moduleHeight < 100) && moduleWidth == moduleHeight) { // 1x1 module
+        retVal = moduleWidth / 2;
+    } else if ((moduleWidth > moduleHeight) || (moduleHeight > moduleWidth)) {
+        retVal = (moduleHeight > 200 && moduleWidth > moduleHeight) ? (fminf(moduleWidth, moduleHeight) - 40) / 4 : fminf(moduleWidth, moduleHeight) / 2; // Rectangular module
+    } else if ((moduleWidth > 100 && moduleHeight > 100) && moduleWidth == moduleHeight) { // large square module
+        retVal = (moduleWidth - 40) / 4;
+    } else if (moduleWidth > 100 && moduleHeight > 100) { // 1x1 module
+        retVal = (moduleWidth - 40) / 4;
+    } 
+    return retVal; // may need more cases for odd shaped modules such as CCSupport's 2x4 module
 }
 
 CGFloat calculatedRadiusForLayer(CALayer *layer, CGFloat fallbackRadius) {
@@ -739,6 +776,46 @@ void applyBorderToSpecialViews(UIView *view, BOOL expanded) {
 %end
 
 static void loadPreferences(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
+    if (!containsKey(@"primaryGradientDict")) {
+        NSDictionary *primaryGradient = @{
+            @"red": @(0.8),
+            @"green": @(0.75),
+            @"blue": @(0.95),
+            @"alpha": @(0.30)
+        };
+        [[NSUserDefaults standardUserDefaults] setObject:primaryGradient forKey:@"primaryGradientDict" inDomain:domain];
+    }
+
+    if (!containsKey(@"secondaryGradientDict")) {
+        NSDictionary *secondaryGradient = @{
+            @"red": @(1.0),
+            @"green": @(1.0),
+            @"blue": @(1.0),
+            @"alpha": @(0.08)
+        };
+        [[NSUserDefaults standardUserDefaults] setObject:secondaryGradient forKey:@"secondaryGradientDict" inDomain:domain];
+    }
+
+    if (!containsKey(@"tertiaryGradientDict")) {
+        NSDictionary *tertiaryGradient = @{
+            @"red": @(0.9),
+            @"green": @(0.85),
+            @"blue": @(1.0),
+            @"alpha": @(0.20)
+        };
+        [[NSUserDefaults standardUserDefaults] setObject:tertiaryGradient forKey:@"tertiaryGradientDict" inDomain:domain];
+    }
+
+    if (!containsKey(@"borderColorDict")) {
+        NSDictionary *tertiaryGradient = @{
+            @"red": @(0.5),
+            @"green": @(0.5),
+            @"blue": @(0.5),
+            @"alpha": @(0.3)
+        };
+        [[NSUserDefaults standardUserDefaults] setObject:tertiaryGradient forKey:@"borderColorDict" inDomain:domain];
+    }
+
     NSNumber *enabledValue = (NSNumber *)[[NSUserDefaults standardUserDefaults] objectForKey:@"enabled" inDomain:domain];
     enabled = (enabledValue) ? [enabledValue boolValue] : NO;
     NSNumber *enableTopButtonsValue = (NSNumber *)[[NSUserDefaults standardUserDefaults] objectForKey:@"enableTopButtons" inDomain:domain];

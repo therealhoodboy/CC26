@@ -6,25 +6,39 @@
 	<array>
         <dict>
 			<key>cell</key>
-        	<string>PSSwitchCell</string>
-			<key>default</key>
-			<true/>
-			<key>defaults</key>
-			<string>com.cureux.cc26</string>
-			<key>key</key>
-			<string>enableTopButtons</string>
+			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>Enable Top Buttons</string>
-			<key>PostNotification</key>
-            <string>com.cureux.cc26/preferences.changed</string>
+			<string>Border Width</string>
 		</dict>
-		<dict>
+        <dict>
+            <key>PostNotification</key>
+            <string>com.cureux.cc26/preferences.changed</string>
+            <key>cell</key>
+            <string>PSSliderCell</string>
+            <key>default</key>
+            <integer>2</integer>
+            <key>defaults</key>
+            <string>com.cureux.cc26</string>
+            <key>isSegmented</key>
+            <false/>
+            <key>key</key>
+            <string>borderWidth</string>
+            <key>id</key>
+            <string>borderWidth</string>
+            <key>max</key>
+            <integer>10</integer>
+            <key>min</key>
+            <integer>0</integer>
+            <key>showValue</key>
+            <true/>
+        </dict>
+        <dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string></string>
+			<string>Border Color</string>
 		</dict>
-		<dict>
+        <dict>
             <key>PostNotification</key>
             <string>com.cureux.cc26/preferences.changed</string>
             <key>cellClass</key>
@@ -34,13 +48,19 @@
             <key>height</key>
             <string>60</string>
             <key>id</key>
-            <string>addButtonColor</string>
+            <string>borderColor</string>
             <key>key</key>
-            <string>addButtonColor</string>
+            <string>borderColor</string>
             <key>label</key>
-            <string>Add Button Color</string>
+            <string>Border Color</string>
         </dict>
-		<dict>
+        <dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Gradient Colors</string>
+		</dict>
+        <dict>
             <key>PostNotification</key>
             <string>com.cureux.cc26/preferences.changed</string>
             <key>cellClass</key>
@@ -50,11 +70,43 @@
             <key>height</key>
             <string>60</string>
             <key>id</key>
-            <string>powerButtonColor</string>
+            <string>primaryGradient</string>
             <key>key</key>
-            <string>powerButtonColor</string>
+            <string>primaryGradient</string>
             <key>label</key>
-            <string>Power Button Color</string>
+            <string>First Gradient Color</string>
+        </dict>
+        <dict>
+            <key>PostNotification</key>
+            <string>com.cureux.cc26/preferences.changed</string>
+            <key>cellClass</key>
+            <string>CC26ColorCell</string>
+            <key>defaults</key>
+            <string>com.cureux.cc26</string>
+            <key>height</key>
+            <string>60</string>
+            <key>id</key>
+            <string>secondaryGradient</string>
+            <key>key</key>
+            <string>secondaryGradient</string>
+            <key>label</key>
+            <string>Second Gradient Color</string>
+        </dict>
+        <dict>
+            <key>PostNotification</key>
+            <string>com.cureux.cc26/preferences.changed</string>
+            <key>cellClass</key>
+            <string>CC26ColorCell</string>
+            <key>defaults</key>
+            <string>com.cureux.cc26</string>
+            <key>height</key>
+            <string>60</string>
+            <key>id</key>
+            <string>tertiaryGradient</string>
+            <key>key</key>
+            <string>tertiaryGradient</string>
+            <key>label</key>
+            <string>Third Gradient Color</string>
         </dict>
 	</array>
 	<key>title</key>
