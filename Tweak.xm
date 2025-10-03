@@ -1,5 +1,4 @@
 #import "Tweak.h"
-#import <Metal/Metal.h>
 
 #pragma mark - Calculation of border radius for different modules
 
@@ -144,6 +143,9 @@ static id<MTLDevice> pMetalDevice = nil;
 static id<MTLCommandQueue> pMetalCommandQueue = nil;
 
 static id<MTLRenderPipelineState> uiGlassShader = nil;
+static id<MTLTexture> uiGlassBackdropTexture = nil;
+
+static CARenderer *pCARenderer = nil;
 
 void initMetalDevice() {
     
@@ -152,32 +154,111 @@ NSLog(@"TAHOE: initMetalDevice:BEGIN");
     pMetalDevice = MTLCreateSystemDefaultDevice();
     pMetalCommandQueue = [ pMetalDevice newCommandQueue ];
 
-    NSString *shaderCode = @"#include <metal_stdlib>\n"
-     "             using namespace metal;"
-     "             struct v2f"
-     "             {"
-     "                 float4 position [[position]];"
-     "                 float2 texcoord;"
-     "                 half3 color;"
-     "             };"
-     "             v2f vertex vertexMain( uint vertexId [[vertex_id]])"
-     "             {"
-     "                 const float4 cvPositions[3] ="
-     "                 {"
-     "                     { -1.0, -1.0,  1.0,  1.0 },"
-     "                     {  3.0, -1.0,  1.0,  1.0 },"
-     "                     { -1.0,  3.0,  1.0,  1.0 },"
-     "                 };"
-     "                 v2f o;"
-     "                 o.position = cvPositions[ vertexId ];"
-     "                 o.texcoord = cvPositions[ vertexId ].xy;"
-     "                 o.color = half3 ( 1.f, 0.f, 0.f );"
-     "                 return o;"
-     "             }"
-     "             half4 fragment fragmentMain( v2f in [[stage_in]])"
-     "             {"
-     "               return half4(0.f, 1.f, 0.f, 1.f);"
-     "             }";
+    NSString *shaderCode = 
+        @"#include <metal_stdlib>\n"
+        @"using namespace metal;\n"
+        @"\n"
+        @"struct v2f\n"
+        @"{\n"
+        @"    float4 position [[position]];\n"
+        @"    float2 texcoord;\n"
+        @"    half3 color;\n"
+        @"};\n"
+        @"\n"
+        @"struct glass_t {\n"
+        @"    float2 position;\n"
+        @"    float size;\n"
+        @"    float2 realsize;\n"
+        @"    float blur;\n"
+        @"    float realblur;\n"
+        @"    float4 color;\n"
+        @"};\n"
+        @"\n"
+        @"struct instance_data_t {\n"
+        @"    int glassCount;\n"
+        @"    float2 rtSize;\n"
+        @"    float aspectRatio;\n"
+        @"    glass_t glasses[512];\n"
+        @"};\n"
+        @"\n"
+        @"struct CameraData\n"
+        @"{\n"
+        @"    float4x4 perspectiveTransform;\n"
+        @"    float4x4 worldTransform;\n"
+        @"    float3x3 worldNormalTransform;\n"
+        @"};\n"
+        @"\n"
+        @"v2f vertex vertexMain(uint vertexId [[vertex_id]])\n"
+        @"{\n"
+        @"    const float4 cvPositions[3] = {\n"
+        @"        { -1.0, -1.0,  1.0,  1.0 },\n"
+        @"        {  3.0, -1.0,  1.0,  1.0 },\n"
+        @"        { -1.0,  3.0,  1.0,  1.0 },\n"
+        @"    };\n"
+        @"    v2f o;\n"
+        @"    o.position = cvPositions[vertexId];\n"
+        @"    o.texcoord = cvPositions[vertexId].xy;\n"
+        @"    o.color = half3(1.f, 0.f, 0.f);\n"
+        @"    return o;\n"
+        @"}\n"
+        @"\n"
+        @"half3 gblur(float2 uv, texture2d<half, access::sample> tex, float blur = 1.0)\n"
+        @"{\n"
+        @"    constexpr sampler s(address::repeat, filter::linear);\n"
+        @"    float Pi = 6.28318530718;\n"
+        @"    float Directions = 16.0;\n"
+        @"    float Quality = 3.0;\n"
+        @"    float Size = blur;\n"
+        @"    float2 Radius = Size/float2(2880.f,1800.f);\n"
+        @"    half3 Color = tex.sample(s, uv).rgb;\n"
+        @"    for (float d=0.0; d<Pi; d+=Pi/Directions) {\n"
+        @"        for(float i=1.0/Quality; i<=1.0001; i+=1.0/Quality) {\n"
+        @"            Color += tex.sample(s, uv + float2(cos(d), sin(d)) * Radius * i).rgb;\n"
+        @"        }\n"
+        @"    }\n"
+        @"    Color /= Quality * Directions + 1.0;\n"
+        @"    return Color;\n"
+        @"}\n"
+        @"\n"
+        @"float2 rescale(float2 size, float2 texcoord) {\n"
+        @"    float2 mask;\n"
+        @"    mask.y = step(-size.y, texcoord.y) * step(texcoord.y, 0.0);\n"
+        @"    mask.x = step(0.0, texcoord.x) * step(texcoord.x, size.x);\n"
+        @"    return (1.0 - mask);\n"
+        @"}\n"
+        @"\n"
+        @"half4 draw_circle(float2 texcoord_r, float2 texcoord, float2 position, float4 color, texture2d<half, access::sample> tex, float scales = 0.1f, float blur = 1.f, float radius = 1.f, float2 size = float2(1.f, 1.f), float aspx = 1.6f) {\n"
+        @"    float2 sub = (texcoord - position);\n"
+        @"    float2 res = rescale(size, sub) * float2(aspx, 1.f);\n"
+        @"    sub -= float2(step(0.0, sub.x) * size.x, -step(sub.y, 0.0) * size.y);\n"
+        @"    float2 diff = sub * res;\n"
+        @"    float f = sqrt(dot(diff, diff) / radius);\n"
+        @"    if (f > 0.6f) return half4(0,0,0, saturate((1.0 - f - 0.2)));\n"
+        @"    float2 scale = float2(-scales, scales) * res;\n"
+        @"    sub = mix(0.f, sub, abs(f));\n"
+        @"    half3 texel1 = gblur(texcoord_r + sub * (fmod(0.56f-f, 0.6f)), tex, blur);\n"
+        @"    half3 texel2 = gblur(texcoord_r + sub * (2.44f-(f+f)) * (scale*0.5f)*0.098f, tex, blur);\n"
+        @"    half3 texel3 = gblur(texcoord_r + sub * (0.55f - f) * 0.18f * scale, tex, blur);\n"
+        @"    half3 texel4 = gblur(texcoord_r + sub * (0.5f - f) * 0.8f * scale, tex, blur);\n"
+        @"    half3 texel = (f > 0.58f) ? texel2 : texel3;\n"
+        @"    texel += texel1 * saturate((f - 0.47) / 0.23) * max(texel1, texel);\n"
+        @"    texel = mix(texel3, texel, saturate((f - 0.39) / 0.35)) * max(texel4, half3(0.9));\n"
+        @"    texel *= mix(half3(1.f), half3(color.xyz), 1.f-color.w);\n"
+        @"    texel += half3(color.xyz) * max(min(0.7f, (0.26f - f)), 0.4f) * 0.66f * color.w;\n"
+        @"    return half4(texel, 1.f);\n"
+        @"}\n"
+        @"\n"
+        @"half4 fragment fragmentMain(v2f in [[stage_in]],\n"
+        @"    texture2d<half, access::sample> tex [[texture(0)]])\n"
+        @"{\n"
+        @"    constexpr sampler s(address::repeat, filter::linear);\n"
+        @"    float2 uv = in.position.xy * float2(1/480.f, 1/480.f);\n"
+        @"    half3 texel1 = tex.sample(s, uv).rgb;\n"
+        @"    half4 circles = draw_circle(uv, in.texcoord, float2(0,0), float4(1.f,1.f,1.f,0.6f), tex, -31.f, 72.f, 2.6f, float2(0.f,0.f), 1.f);\n"
+        @"    in.color = half3(mix(texel1, circles.rgb, circles.a));\n"
+        @"    return half4(in.color, 1.0);\n"
+        @"}\n";
+
 
 
     NSError *error;
@@ -214,6 +295,64 @@ if (!vertexFunction || !fragmentFunction) {
 
 }
 
+void initCARenderer(CALayer *layer) {
+
+    MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor new];
+    
+    CGSize size = CGSizeMake(
+        layer.bounds.size.width,
+        layer.bounds.size.height
+    );
+
+    // Set dimensions
+    textureDescriptor.width = (NSUInteger)size.width;
+    textureDescriptor.height = (NSUInteger)size.height;
+    textureDescriptor.pixelFormat = MTL_TAHOE_FORMAT;
+    textureDescriptor.textureType = MTLTextureType2D;
+    textureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+    textureDescriptor.storageMode = MTLStorageModeShared;
+    
+    // 2. Create the MTLTexture
+    uiGlassBackdropTexture = [pMetalDevice newTextureWithDescriptor:textureDescriptor];
+
+    pCARenderer = [CARenderer rendererWithMTLTexture:uiGlassBackdropTexture  options:nil];
+    pCARenderer.layer = layer;
+    pCARenderer.bounds = layer.bounds;
+
+
+
+    // in the future please replace this test checkerboard pattern to the actual backdrop of the layer
+    // i'm currently sturggling to figure this out as of 1:25 am on october 3 2025
+    // quartzcore CARenderer will not work (too barebone) and coregraphics will not work (no backdrop)
+
+    #define tw   size.width
+    #define th   size.height
+
+    uint8_t* pTextureData = (uint8_t *)alloca( tw * th * 4 );
+    for ( size_t y = 0; y < th; ++y )
+    {
+        for ( size_t x = 0; x < tw; ++x )
+        {
+            bool isWhite = (x^y) & 0b1000000;
+            uint8_t c = isWhite ? 0xFF : 0xA;
+
+            size_t i = y * tw + x;
+
+            pTextureData[ i * 4 + 0 ] = c;
+            pTextureData[ i * 4 + 1 ] = c;
+            pTextureData[ i * 4 + 2 ] = c;
+            pTextureData[ i * 4 + 3 ] = 0xFF;
+        }
+    }
+
+    [uiGlassBackdropTexture replaceRegion : MTLRegionMake2D(0,0,tw,th) mipmapLevel:0 withBytes:pTextureData bytesPerRow:tw*4];
+
+}
+
+void renderPrismBackdrop(CALayer *layer) {
+
+}
+
 void renderPrism(CAMetalLayer *metalLayer) {
 
     id<CAMetalDrawable> drawable = [metalLayer nextDrawable];
@@ -221,15 +360,17 @@ void renderPrism(CAMetalLayer *metalLayer) {
 
     MTLRenderPassDescriptor *pass = [MTLRenderPassDescriptor renderPassDescriptor];
     pass.colorAttachments[0].texture = drawable.texture;
-    pass.colorAttachments[0].loadAction = MTLLoadActionClear;
+    pass.colorAttachments[0].loadAction = MTLLoadActionLoad;
     pass.colorAttachments[0].storeAction = MTLStoreActionStore;
-    pass.colorAttachments[0].clearColor = MTLClearColorMake(0,0,0,0);
+   // pass.colorAttachments[0].clearColor = MTLClearColorMake(0,0,0,0);
 
     id<MTLCommandBuffer> cmd = [pMetalCommandQueue commandBuffer];
     id<MTLRenderCommandEncoder> enc = [cmd renderCommandEncoderWithDescriptor:pass];
 
 
     [enc setRenderPipelineState:uiGlassShader];
+
+    [enc setFragmentTexture:uiGlassBackdropTexture atIndex:0];
 
 
     [enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
@@ -251,6 +392,7 @@ void applyPrismToLayer(CALayer *layer) {
 
     if (!pMetalDevice) {
         initMetalDevice();
+        initCARenderer(layer);
     }
 
     if (!metalLayer) {
@@ -267,6 +409,10 @@ void applyPrismToLayer(CALayer *layer) {
     }
     else {
         // this will be our main update logic
+
+        metalLayer.hidden = YES;
+        renderPrismBackdrop(layer);
+        metalLayer.hidden = NO;
 
         renderPrism(metalLayer);
 
