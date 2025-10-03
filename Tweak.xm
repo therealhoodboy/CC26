@@ -1,4 +1,5 @@
 #import "Tweak.h"
+#import <Metal/Metal.h>
 
 #pragma mark - Calculation of border radius for different modules
 
@@ -103,6 +104,7 @@ UIView *findSubviewOfClass(UIView *view, Class cls) {
 
 #pragma mark - iOS 26 border
 
+/*
 void applyPrismToLayer(CALayer *layer) {
     CAGradientLayer *gradient = nil;
 
@@ -133,6 +135,149 @@ void applyPrismToLayer(CALayer *layer) {
     gradient.masksToBounds = YES;
     gradient.cornerRadius = layer.cornerRadius;
 }
+*/
+
+// new tahoe shader
+#define MTL_TAHOE_FORMAT  MTLPixelFormatBGRA8Unorm;
+
+static id<MTLDevice> pMetalDevice = nil;
+static id<MTLCommandQueue> pMetalCommandQueue = nil;
+
+static id<MTLRenderPipelineState> uiGlassShader = nil;
+
+void initMetalDevice() {
+    
+NSLog(@"TAHOE: initMetalDevice:BEGIN");
+
+    pMetalDevice = MTLCreateSystemDefaultDevice();
+    pMetalCommandQueue = [ pMetalDevice newCommandQueue ];
+
+    NSString *shaderCode = @"#include <metal_stdlib>\n"
+     "             using namespace metal;"
+     "             struct v2f"
+     "             {"
+     "                 float4 position [[position]];"
+     "                 float2 texcoord;"
+     "                 half3 color;"
+     "             };"
+     "             v2f vertex vertexMain( uint vertexId [[vertex_id]])"
+     "             {"
+     "                 const float4 cvPositions[3] ="
+     "                 {"
+     "                     { -1.0, -1.0,  1.0,  1.0 },"
+     "                     {  3.0, -1.0,  1.0,  1.0 },"
+     "                     { -1.0,  3.0,  1.0,  1.0 },"
+     "                 };"
+     "                 v2f o;"
+     "                 o.position = cvPositions[ vertexId ];"
+     "                 o.texcoord = cvPositions[ vertexId ].xy;"
+     "                 o.color = half3 ( 1.f, 0.f, 0.f );"
+     "                 return o;"
+     "             }"
+     "             half4 fragment fragmentMain( v2f in [[stage_in]])"
+     "             {"
+     "               return half4(0.f, 1.f, 0.f, 1.f);"
+     "             }";
+
+
+    NSError *error;
+    MTLCompileOptions *opts = [[MTLCompileOptions alloc] init];
+    
+
+    id<MTLLibrary> shaderLib = [pMetalDevice newLibraryWithSource:shaderCode  options:opts  error:&error];
+
+    NSLog(@"shader addr %x", shaderLib);
+        
+    id<MTLFunction> vertexFunction = [shaderLib newFunctionWithName:@"vertexMain"];
+    id<MTLFunction> fragmentFunction = [shaderLib newFunctionWithName:@"fragmentMain"];
+
+
+if (!vertexFunction || !fragmentFunction) {
+    NSLog(@"FATAL: Could not find shader functions in the library.");
+}
+
+
+    MTLRenderPipelineDescriptor* renderPipelineDescriptor = [ [MTLRenderPipelineDescriptor alloc] init];
+    renderPipelineDescriptor.label = @"liquidarse";
+    renderPipelineDescriptor.vertexFunction = vertexFunction;
+    renderPipelineDescriptor.fragmentFunction = fragmentFunction;
+    renderPipelineDescriptor.colorAttachments[0].pixelFormat = MTL_TAHOE_FORMAT;
+
+
+
+    NSError *error2;
+
+    uiGlassShader = [pMetalDevice newRenderPipelineStateWithDescriptor:renderPipelineDescriptor error:&error2];
+
+  //  if (error2)        
+   //     NSLog(@"%@", [error2 localizedDescription]);
+
+}
+
+void renderPrism(CAMetalLayer *metalLayer) {
+
+    id<CAMetalDrawable> drawable = [metalLayer nextDrawable];
+    if (!drawable) return;
+
+    MTLRenderPassDescriptor *pass = [MTLRenderPassDescriptor renderPassDescriptor];
+    pass.colorAttachments[0].texture = drawable.texture;
+    pass.colorAttachments[0].loadAction = MTLLoadActionClear;
+    pass.colorAttachments[0].storeAction = MTLStoreActionStore;
+    pass.colorAttachments[0].clearColor = MTLClearColorMake(0,0,0,0);
+
+    id<MTLCommandBuffer> cmd = [pMetalCommandQueue commandBuffer];
+    id<MTLRenderCommandEncoder> enc = [cmd renderCommandEncoderWithDescriptor:pass];
+
+
+    [enc setRenderPipelineState:uiGlassShader];
+
+
+    [enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+    [enc endEncoding];
+
+    [cmd presentDrawable:drawable];
+    [cmd commit];
+}
+
+void applyPrismToLayer(CALayer *layer) {
+    CAMetalLayer *metalLayer = nil;
+
+    for (CALayer *sublayer in layer.sublayers) {
+        if ([sublayer.name isEqualToString:@"iOS26PrismBorder"] && [sublayer isKindOfClass:[CAMetalLayer class]]) {
+            metalLayer = (CAMetalLayer *)sublayer;
+            break;
+        }
+    }
+
+    if (!pMetalDevice) {
+        initMetalDevice();
+    }
+
+    if (!metalLayer) {
+        metalLayer = [CAMetalLayer layer];
+        metalLayer.name = @"iOS26PrismBorder";
+        metalLayer.contentsScale = [UIScreen mainScreen].scale;
+
+        metalLayer.device = pMetalDevice;
+        metalLayer.pixelFormat = MTL_TAHOE_FORMAT;
+        metalLayer.framebufferOnly = YES;
+        
+        [layer insertSublayer:metalLayer atIndex:0];
+        
+    }
+    else {
+        // this will be our main update logic
+
+        renderPrism(metalLayer);
+
+
+    }
+
+    metalLayer.frame = layer.bounds;
+    metalLayer.masksToBounds = YES;
+    metalLayer.cornerRadius = layer.cornerRadius;
+}
+
 
 %group CC26
 %hook MTMaterialLayer
@@ -144,7 +289,7 @@ void applyPrismToLayer(CALayer *layer) {
         id<MTRecipeMaterialSettingsProviding> settings = interpolator.finalSettings;
         id base = [settings baseMaterialSettings];
         if (![base respondsToSelector:@selector(setValue:forKey:)]) return;
-
+/*
         if ([self.recipeName isEqualToString:@"modules"]) {
             [base setValue:@(-0.04) forKey:@"brightness"];
             [base setValue:@(0.6) forKey:@"blurRadius"];
@@ -159,6 +304,7 @@ void applyPrismToLayer(CALayer *layer) {
         } else if ([self.recipeName isEqualToString:@"auxiliary"]) {
             [base setValue:@(2.3) forKey:@"blurRadius"];
         }
+*/
     }
 }
 - (void)layoutSublayers {
@@ -168,6 +314,7 @@ void applyPrismToLayer(CALayer *layer) {
     UIView *parentView = (UIView *)self.delegate;
     if ([titles containsObject:self.recipeName]) {
         if ([allowedAncestors containsObject:NSStringFromClass([[parentView _viewControllerForAncestor] class])]) {
+            // !!!!! IMPORTANT !!!!!!!
             applyPrismToLayer(self);
         }
     }
