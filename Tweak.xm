@@ -144,9 +144,18 @@ static id<MTLCommandQueue> pMetalCommandQueue = nil;
 
 static id<MTLRenderPipelineState> uiGlassShader = nil;
 static id<MTLTexture> uiGlassBackdropTexture = nil;
+static id<MTLBuffer> uiGlassInstanceData = nil;
 
-static CARenderer *pCARenderer = nil;
 
+struct TAHOE_instance_data_t {
+    float position_x;
+    float position_y;
+    float rtSize_x;
+    float rtSize_y;
+    float aspectRatio;
+    float _padd[3];
+} uiGlassInstanceDataCPU;
+        
 void initMetalDevice() {
     
 NSLog(@"TAHOE: initMetalDevice:BEGIN");
@@ -165,27 +174,11 @@ NSLog(@"TAHOE: initMetalDevice:BEGIN");
         @"    half3 color;\n"
         @"};\n"
         @"\n"
-        @"struct glass_t {\n"
-        @"    float2 position;\n"
-        @"    float size;\n"
-        @"    float2 realsize;\n"
-        @"    float blur;\n"
-        @"    float realblur;\n"
-        @"    float4 color;\n"
-        @"};\n"
-        @"\n"
         @"struct instance_data_t {\n"
-        @"    int glassCount;\n"
-        @"    float2 rtSize;\n"
-        @"    float aspectRatio;\n"
-        @"    glass_t glasses[512];\n"
-        @"};\n"
-        @"\n"
-        @"struct CameraData\n"
-        @"{\n"
-        @"    float4x4 perspectiveTransform;\n"
-        @"    float4x4 worldTransform;\n"
-        @"    float3x3 worldNormalTransform;\n"
+        @"    float position[2];   // float2\n"
+        @"    float rtSize[2];     // float2\n"
+        @"    float aspectRatio;   // float\n"
+        @"    float _padding[3];   // pad to 32 bytes\n"
         @"};\n"
         @"\n"
         @"v2f vertex vertexMain(uint vertexId [[vertex_id]])\n"
@@ -210,10 +203,10 @@ NSLog(@"TAHOE: initMetalDevice:BEGIN");
         @"    float Quality = 3.0;\n"
         @"    float Size = blur;\n"
         @"    float2 Radius = Size/float2(2880.f,1800.f);\n"
-        @"    half3 Color = tex.sample(s, uv).rgb;\n"
+        @"    half3 Color = tex.sample(s, uv).abg;\n"
         @"    for (float d=0.0; d<Pi; d+=Pi/Directions) {\n"
         @"        for(float i=1.0/Quality; i<=1.0001; i+=1.0/Quality) {\n"
-        @"            Color += tex.sample(s, uv + float2(cos(d), sin(d)) * Radius * i).rgb;\n"
+        @"            Color += tex.sample(s, uv + float2(cos(d), sin(d)) * Radius * i).abg;\n"
         @"        }\n"
         @"    }\n"
         @"    Color /= Quality * Directions + 1.0;\n"
@@ -233,7 +226,7 @@ NSLog(@"TAHOE: initMetalDevice:BEGIN");
         @"    sub -= float2(step(0.0, sub.x) * size.x, -step(sub.y, 0.0) * size.y);\n"
         @"    float2 diff = sub * res;\n"
         @"    float f = sqrt(dot(diff, diff) / radius);\n"
-        @"    if (f > 0.6f) return half4(0,0,0, saturate((1.0 - f - 0.2)));\n"
+        @"    if (f > 0.65f) return half4(0,0,0, saturate((1.0 - f - 0.2)));\n"
         @"    float2 scale = float2(-scales, scales) * res;\n"
         @"    sub = mix(0.f, sub, abs(f));\n"
         @"    half3 texel1 = gblur(texcoord_r + sub * (fmod(0.56f-f, 0.6f)), tex, blur);\n"
@@ -249,14 +242,16 @@ NSLog(@"TAHOE: initMetalDevice:BEGIN");
         @"}\n"
         @"\n"
         @"half4 fragment fragmentMain(v2f in [[stage_in]],\n"
+        @"    device const instance_data_t& instanceData [[buffer(0)]],\n"
         @"    texture2d<half, access::sample> tex [[texture(0)]])\n"
         @"{\n"
         @"    constexpr sampler s(address::repeat, filter::linear);\n"
-        @"    float2 uv = in.position.xy * float2(1/480.f, 1/480.f);\n"
-        @"    half3 texel1 = tex.sample(s, uv).rgb;\n"
-        @"    half4 circles = draw_circle(uv, in.texcoord, float2(0,0), float4(1.f,1.f,1.f,0.6f), tex, -31.f, 72.f, 2.6f, float2(0.f,0.f), 1.f);\n"
+        @"    float2 uv = in.position.xy * float2(instanceData.rtSize[0], instanceData.rtSize[1]) + float2(instanceData.position[0], instanceData.position[1]);\n"
+        @"    half3 texel1 = tex.sample(s, uv).abg;\n"
+        @"    half4 circles = draw_circle(uv, in.texcoord * 0.068f, float2(0,0), float4(1.f,1.f,1.f,0.8f), tex, -48.f, 2.f, 0.0125f, float2(0.f,0.f), 1.f);\n"
         @"    in.color = half3(mix(texel1, circles.rgb, circles.a));\n"
         @"    return half4(in.color, 1.0);\n"
+        @"    return half4(texel1, 1.0);\n"
         @"}\n";
 
 
@@ -266,17 +261,9 @@ NSLog(@"TAHOE: initMetalDevice:BEGIN");
     
 
     id<MTLLibrary> shaderLib = [pMetalDevice newLibraryWithSource:shaderCode  options:opts  error:&error];
-
-    NSLog(@"shader addr %x", shaderLib);
         
     id<MTLFunction> vertexFunction = [shaderLib newFunctionWithName:@"vertexMain"];
     id<MTLFunction> fragmentFunction = [shaderLib newFunctionWithName:@"fragmentMain"];
-
-
-if (!vertexFunction || !fragmentFunction) {
-    NSLog(@"FATAL: Could not find shader functions in the library.");
-}
-
 
     MTLRenderPipelineDescriptor* renderPipelineDescriptor = [ [MTLRenderPipelineDescriptor alloc] init];
     renderPipelineDescriptor.label = @"liquidarse";
@@ -289,67 +276,89 @@ if (!vertexFunction || !fragmentFunction) {
     NSError *error2;
 
     uiGlassShader = [pMetalDevice newRenderPipelineStateWithDescriptor:renderPipelineDescriptor error:&error2];
-
-  //  if (error2)        
-   //     NSLog(@"%@", [error2 localizedDescription]);
+    uiGlassInstanceData = [pMetalDevice newBufferWithLength:sizeof(TAHOE_instance_data_t) options:MTLResourceStorageModeShared ];
 
 }
 
-void initCARenderer(CALayer *layer) {
 
-    MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor new];
-    
-    CGSize size = CGSizeMake(
-        layer.bounds.size.width,
-        layer.bounds.size.height
-    );
+void updatePrismData(CALayer *layer) {
+    //uiGlassInstanceDataCPU.position_x = layer.position.x;
+    //uiGlassInstanceDataCPU.position_y = layer.position.y;
 
-    // Set dimensions
-    textureDescriptor.width = (NSUInteger)size.width;
-    textureDescriptor.height = (NSUInteger)size.height;
-    textureDescriptor.pixelFormat = MTL_TAHOE_FORMAT;
-    textureDescriptor.textureType = MTLTextureType2D;
-    textureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
-    textureDescriptor.storageMode = MTLStorageModeShared;
-    
-    // 2. Create the MTLTexture
-    uiGlassBackdropTexture = [pMetalDevice newTextureWithDescriptor:textureDescriptor];
+    uiGlassInstanceDataCPU.position_y = 0.65f;
+    uiGlassInstanceDataCPU.position_x = 0.45f;
 
-    pCARenderer = [CARenderer rendererWithMTLTexture:uiGlassBackdropTexture  options:nil];
-    pCARenderer.layer = layer;
-    pCARenderer.bounds = layer.bounds;
+    uiGlassInstanceDataCPU.rtSize_x = 1.f/768.f; //(1.f/layer.bounds.size.width);
+    uiGlassInstanceDataCPU.rtSize_y = 1.f/768.f; //(1.f/layer.bounds.size.height);
 
 
-
-    // in the future please replace this test checkerboard pattern to the actual backdrop of the layer
-    // i'm currently sturggling to figure this out as of 1:25 am on october 3 2025
-    // quartzcore CARenderer will not work (too barebone) and coregraphics will not work (no backdrop)
-
-    #define tw   size.width
-    #define th   size.height
-
-    uint8_t* pTextureData = (uint8_t *)alloca( tw * th * 4 );
-    for ( size_t y = 0; y < th; ++y )
-    {
-        for ( size_t x = 0; x < tw; ++x )
-        {
-            bool isWhite = (x^y) & 0b1000000;
-            uint8_t c = isWhite ? 0xFF : 0xA;
-
-            size_t i = y * tw + x;
-
-            pTextureData[ i * 4 + 0 ] = c;
-            pTextureData[ i * 4 + 1 ] = c;
-            pTextureData[ i * 4 + 2 ] = c;
-            pTextureData[ i * 4 + 3 ] = 0xFF;
-        }
-    }
-
-    [uiGlassBackdropTexture replaceRegion : MTLRegionMake2D(0,0,tw,th) mipmapLevel:0 withBytes:pTextureData bytesPerRow:tw*4];
-
+    memcpy( uiGlassInstanceData.contents, &uiGlassInstanceDataCPU, sizeof(TAHOE_instance_data_t) );
 }
+// Instead of using renderInContext (which cannot capture live blur/vibrancy/compositing effects),
+// use iOS's snapshotting APIs to get the real screen content as seen by the user (including all blur, vibrancy, overlays, etc).
+// This grabs the full screen as the user sees it and uploads it to the Metal texture.
 
 void renderPrismBackdrop(CALayer *layer) {
+    CGSize size = CGSizeMake(layer.bounds.size.width, layer.bounds.size.height);
+    if (size.width < 1 || size.height < 1) return;
+
+    
+    @autoreleasepool {
+        MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor new];
+        // Set dimensions
+        textureDescriptor.width = (NSUInteger)size.width;
+        textureDescriptor.height = (NSUInteger)size.height;
+        textureDescriptor.pixelFormat = MTLPixelFormatRGBA8Unorm;
+        textureDescriptor.textureType = MTLTextureType2D;
+        textureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+        textureDescriptor.storageMode = MTLStorageModeShared;
+        
+        // 2. Create the MTLTexture
+        uiGlassBackdropTexture = [pMetalDevice newTextureWithDescriptor:textureDescriptor];
+
+    }
+
+    NSUInteger width = (NSUInteger)size.width;
+    NSUInteger height = (NSUInteger)size.height;
+    NSUInteger bytesPerRow = width * 4;
+
+    // 1. Get the main SpringBoard window (root window) for a true screen snapshot
+    UIWindow *mainWindow = nil;
+    for (UIWindow *window in [UIApplication sharedApplication].windows) {
+        if ([NSStringFromClass([window class]) isEqualToString:@"SBMainDisplayWindow"]) {
+            mainWindow = window;
+            break;
+        }
+    }
+    if (!mainWindow) {
+        mainWindow = [UIApplication sharedApplication].keyWindow ?: [UIApplication sharedApplication].windows.firstObject;
+    }
+    if (!mainWindow) return;
+
+    UIGraphicsBeginImageContextWithOptions(size, NO, [UIScreen mainScreen].scale);
+    [mainWindow drawViewHierarchyInRect:CGRectMake(0, 0, size.width, size.height) afterScreenUpdates:NO];
+    UIImage *snapshot = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+
+    if (!snapshot) return;
+
+    // 2. Get raw pixel data from the snapshot
+    CGImageRef cgImage = snapshot.CGImage;
+    if (!cgImage) return;
+
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    void *pTextureData = calloc(height, bytesPerRow);
+    CGContextRef context = CGBitmapContextCreate(pTextureData, width, height, 8, bytesPerRow, colorSpace, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Host);
+
+    if (context) {
+        CGContextDrawImage(context, CGRectMake(0, 0, width, height), cgImage);
+        MTLRegion region = MTLRegionMake2D(0, 0, width, height);
+        [uiGlassBackdropTexture replaceRegion:region mipmapLevel:0 withBytes:pTextureData bytesPerRow:bytesPerRow];
+
+        CGContextRelease(context);
+    }
+    CGColorSpaceRelease(colorSpace);
+    free(pTextureData);
 
 }
 
@@ -358,11 +367,13 @@ void renderPrism(CAMetalLayer *metalLayer) {
     id<CAMetalDrawable> drawable = [metalLayer nextDrawable];
     if (!drawable) return;
 
+    updatePrismData(metalLayer);
+
     MTLRenderPassDescriptor *pass = [MTLRenderPassDescriptor renderPassDescriptor];
     pass.colorAttachments[0].texture = drawable.texture;
-    pass.colorAttachments[0].loadAction = MTLLoadActionLoad;
+    pass.colorAttachments[0].loadAction = MTLLoadActionClear;
     pass.colorAttachments[0].storeAction = MTLStoreActionStore;
-   // pass.colorAttachments[0].clearColor = MTLClearColorMake(0,0,0,0);
+    pass.colorAttachments[0].clearColor = MTLClearColorMake(0,0,0,0);
 
     id<MTLCommandBuffer> cmd = [pMetalCommandQueue commandBuffer];
     id<MTLRenderCommandEncoder> enc = [cmd renderCommandEncoderWithDescriptor:pass];
@@ -371,6 +382,7 @@ void renderPrism(CAMetalLayer *metalLayer) {
     [enc setRenderPipelineState:uiGlassShader];
 
     [enc setFragmentTexture:uiGlassBackdropTexture atIndex:0];
+    [enc setFragmentBuffer:uiGlassInstanceData offset:0 atIndex:0 ];
 
 
     [enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
@@ -379,6 +391,33 @@ void renderPrism(CAMetalLayer *metalLayer) {
     [cmd presentDrawable:drawable];
     [cmd commit];
 }
+
+NSMutableArray<CALayer *> *prismLayers = nil;
+void startPrismUpdates(CALayer *layer) {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        prismLayers = [NSMutableArray array];
+        // Timer to render all layers sequentially
+        [NSTimer scheduledTimerWithTimeInterval:0.01 repeats:YES block:^(NSTimer * _Nonnull timer) {
+            for (CAMetalLayer *l in prismLayers) {
+                renderPrism(l);
+            }
+        }];
+    });
+
+    // Prevent duplicate entries
+    BOOL alreadyExists = NO;
+    for (CALayer *existingLayer in prismLayers) {
+        if (existingLayer == layer) {
+            alreadyExists = YES;
+            break;
+        }
+    }
+    if (!alreadyExists) {
+        [prismLayers addObject:layer];
+    }
+}
+
 
 void applyPrismToLayer(CALayer *layer) {
     CAMetalLayer *metalLayer = nil;
@@ -392,7 +431,10 @@ void applyPrismToLayer(CALayer *layer) {
 
     if (!pMetalDevice) {
         initMetalDevice();
-        initCARenderer(layer);
+        
+        [NSTimer scheduledTimerWithTimeInterval:0.02 repeats:YES block:^(NSTimer * _Nonnull timer) {
+            renderPrismBackdrop(layer);
+        }];
     }
 
     if (!metalLayer) {
@@ -405,18 +447,22 @@ void applyPrismToLayer(CALayer *layer) {
         metalLayer.framebufferOnly = YES;
         
         [layer insertSublayer:metalLayer atIndex:0];
+
         
+        startPrismUpdates(metalLayer);
     }
     else {
+        
+        //        renderPrismBackdrop(layer);
+         //       renderPrism(metalLayer);
         // this will be our main update logic
 
-        metalLayer.hidden = YES;
-        renderPrismBackdrop(layer);
-        metalLayer.hidden = NO;
+      //  metalLayer.hidden = YES;
+        renderPrismBackdrop(metalLayer);
+     //   metalLayer.hidden = NO;
 
-        renderPrism(metalLayer);
-
-
+      //  renderPrism(metalLayer);
+      
     }
 
     metalLayer.frame = layer.bounds;
@@ -435,22 +481,22 @@ void applyPrismToLayer(CALayer *layer) {
         id<MTRecipeMaterialSettingsProviding> settings = interpolator.finalSettings;
         id base = [settings baseMaterialSettings];
         if (![base respondsToSelector:@selector(setValue:forKey:)]) return;
-/*
+
         if ([self.recipeName isEqualToString:@"modules"]) {
-            [base setValue:@(-0.04) forKey:@"brightness"];
-            [base setValue:@(0.6) forKey:@"blurRadius"];
+            [base setValue:@(-0.54) forKey:@"brightness"];
+            [base setValue:@(2.6) forKey:@"blurRadius"];
             [base setValue:@(-0.045) forKey:@"zoom"];
-            [base setValue:@(1.0) forKey:@"saturation"];
-            [base setValue:@(0) forKey:@"luminanceAmount"];
+            [base setValue:@(1.8) forKey:@"saturation"];
+            [base setValue:@(1.0) forKey:@"luminanceAmount"];
         } else if ([self.recipeName isEqualToString:@"modulesBackground"]) {
-            [base setValue:@(0.0) forKey:@"zoom"];
-            [base setValue:@(4.3) forKey:@"blurRadius"];
+         //   [base setValue:@(0.0) forKey:@"zoom"];
+        //    [base setValue:@(4.3) forKey:@"blurRadius"];
             [base setValue:@(-0.14) forKey:@"brightness"];
             [base setValue:@(1.1) forKey:@"saturation"];
         } else if ([self.recipeName isEqualToString:@"auxiliary"]) {
             [base setValue:@(2.3) forKey:@"blurRadius"];
         }
-*/
+
     }
 }
 - (void)layoutSublayers {
