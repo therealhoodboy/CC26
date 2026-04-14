@@ -2,3 +2,9 @@
 .DS_Store
 packages/
 VitreuxSource-main/
+assets/
+Headers/
+frida_*.js
+frida_*.py
+ConnectivityModule/
+*.py

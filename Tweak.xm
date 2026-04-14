@@ -70,7 +70,6 @@ void colorLayers(NSArray *layers, CGColorRef color) {
     }
 }
 
-
 %group CC26
 
 static BOOL cc26_isInsideCCCompact(UIView *view) {
@@ -843,7 +842,8 @@ static void cc26_applyRadiusToInnerViews(UIView *view, CGFloat radius, int depth
     }
 }
 %end
-%end
+
+%end // CC26 group
 
 static void loadPreferences(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
     NSNumber *enabledValue = (NSNumber *)[[NSUserDefaults standardUserDefaults] objectForKey:@"enabled" inDomain:domain];
