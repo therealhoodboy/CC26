@@ -16,9 +16,14 @@ Only tested on iOS 15, without any other modules than default.
 
 | Stock | CC26 |
 | --- | --- |
-| ![before](images/before.png) | ![after](images/after.png) |
+| <img src="images/before.png" width="300"> | <img src="images/after.png" width="300"> |
 
 ## Compatibility
 
 - iOS ~13 – 17.x
 - Rootful & rootless jailbreaks
+
+## Credits
+
+- [dayanch96](https://github.com/dayanch96) — inspiration and original code
+- [MTACS](https://github.com/MTACS) — support and help
