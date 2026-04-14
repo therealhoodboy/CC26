@@ -16,7 +16,7 @@ Only tested on iOS 15, without any other modules than default.
 
 | Stock | CC26 |
 | --- | --- |
-| <img src="images/before.PNG" width="300"> | <img src="images/after.PNG" width="300"> |
+| <img src="images/default.PNG" width="300"> | <img src="images/tweak.PNG" width="300"> |
 
 ## Compatibility
 
