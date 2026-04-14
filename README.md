@@ -1,9 +1,24 @@
-# CC18
-<li>Round CC modules replication, like in iOS 18</li>
-<br>
-<li>Tested on iOS 14.8 and iOS 16.4, no options to configure</li>
-<br>
+# CC26
 
-| iOS 16 | iOS 14 |
+An iOS 18-inspired Control Center tweak for jailbroken devices (iOS ~13–17). Removed liquid glass effects since more promising tweaks will come in the future. 
+This tweak should give you a fresh and modern CC. 
+Only tested on iOS 15, without any other modules than default. 
+
+## Features
+
+- **Rounded modules** — pill-shaped sliders, circular buttons, smooth continuous corners
+- **Modern media module** — compact layout with album art, track info, and AirPlay button
+- **Colored slider glyphs** — customizable brightness and volume icons
+- **Top action buttons** — quick-access + (add) and power button with respring/UICache/userspace reboot
+- **Fully configurable** — adjust colors, positions, and toggle features from Settings
+
+## Screenshots
+
+| Stock | CC26 |
 | --- | --- |
-| ![ios16](https://github.com/user-attachments/assets/213d6339-d4e0-4473-ba70-81a3da5198bd) | ![ios14](https://github.com/user-attachments/assets/fcb25832-f45f-4d54-9265-801f604ec060) |
+| ![before](images/before.png) | ![after](images/after.png) |
+
+## Compatibility
+
+- iOS ~13 – 17.x
+- Rootful & rootless jailbreaks
