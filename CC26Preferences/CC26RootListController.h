@@ -69,13 +69,7 @@ static inline UIColor *colorFromHexString(NSString *hexString) {
 @interface CC26ButtonsListController : CC26Controller
 @end
 
-@interface CC26ModulesListController : CC26Controller
-@end
-
 @interface CC26SlidersListController : CC26Controller
-@end
-
-@interface CC26BlurListController : CC26Controller
 @end
 
 @interface CC26MediaListController : CC26Controller

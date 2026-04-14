@@ -98,6 +98,9 @@
 	tableView.tableHeaderView = self.headerView;
 	return [super tableView:tableView cellForRowAtIndexPath:indexPath];
 }
+- (void)openMTACS {
+	[[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"https://twitter.com/mtaborern"] options:@{} completionHandler:nil];
+}
 @end
 
 @implementation CC26Controller
@@ -141,28 +144,10 @@
 
 @end
 
-@implementation CC26ModulesListController
-- (NSArray *)specifiers {
-	if (!_specifiers) {
-		_specifiers = [self loadSpecifiersFromPlistName:@"Modules" target:self];
-	}
-	return _specifiers;
-}
-@end
-
 @implementation CC26SlidersListController
 - (NSArray *)specifiers {
 	if (!_specifiers) {
 		_specifiers = [self loadSpecifiersFromPlistName:@"Sliders" target:self];
-	}
-	return _specifiers;
-}
-@end
-
-@implementation CC26BlurListController
-- (NSArray *)specifiers {
-	if (!_specifiers) {
-		_specifiers = [self loadSpecifiersFromPlistName:@"Blur" target:self];
 	}
 	return _specifiers;
 }

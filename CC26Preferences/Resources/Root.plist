@@ -32,39 +32,11 @@
             <key>defaults</key>
             <string>com.cureux.cc26</string>
             <key>detail</key>
-            <string>CC26ModulesListController</string>
-            <key>height</key>
-            <string>60</string>
-            <key>label</key>
-            <string>Modules</string>
-        </dict>
-		<dict>
-            <key>cell</key>
-            <string>PSLinkListCell</string>
-            <key>default</key>
-            <string></string>
-            <key>defaults</key>
-            <string>com.cureux.cc26</string>
-            <key>detail</key>
             <string>CC26SlidersListController</string>
             <key>height</key>
             <string>60</string>
             <key>label</key>
             <string>Sliders</string>
-        </dict>
-		<dict>
-            <key>cell</key>
-            <string>PSLinkListCell</string>
-            <key>default</key>
-            <string></string>
-            <key>defaults</key>
-            <string>com.cureux.cc26</string>
-            <key>detail</key>
-            <string>CC26BlurListController</string>
-            <key>height</key>
-            <string>60</string>
-            <key>label</key>
-            <string>Blur Configuration</string>
         </dict>
 		<dict>
             <key>cell</key>
@@ -80,6 +52,20 @@
             <key>label</key>
             <string>Media Player</string>
         </dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Credits</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>MTACS</string>
+			<key>action</key>
+			<string>openMTACS</string>
+		</dict>
 	</array>
 	<key>title</key>
 	<string>CC26</string>

@@ -8,3 +8,4 @@ frida_*.js
 frida_*.py
 ConnectivityModule/
 *.py
+*.sh

@@ -131,7 +131,7 @@ static void cc26_forceSubviewAlphas(UIView *view) {
             btn.frame = CGRectMake(buttonX, buttonY, buttonWidth, buttonHeight);
 
             btn.backgroundColor = [UIColor colorWithWhite:0.8 alpha:0.4];
-            btn.layer.cornerRadius = 18;
+            btn.layer.cornerRadius = MIN(buttonWidth, buttonHeight) / 2.0;
             btn.layer.masksToBounds = YES;
 
             break; // Nur den ersten passenden Button anpassen
@@ -162,7 +162,19 @@ static void cc26_forceSubviewAlphas(UIView *view) {
         if ([parent isKindOfClass:%c(MRUNowPlayingView)]) {
             @try {
                 NSInteger layout = [[parent valueForKey:@"_layout"] integerValue];
-                if (layout == 2 || layout == 1) return;
+                if (layout == 2 || layout == 1) {
+                    // Reset masksToBounds we set in collapsed mode
+                    Ivar routingIvar = class_getInstanceVariable(object_getClass(self), "_routingButton");
+                    if (routingIvar) {
+                        UIView *rb = object_getIvar(self, routingIvar);
+                        if (rb) {
+                            rb.layer.masksToBounds = NO;
+                            rb.layer.cornerRadius = 0;
+                            rb.backgroundColor = [UIColor clearColor];
+                        }
+                    }
+                    return;
+                }
             } @catch (NSException *e) {}
             break;
         }
@@ -213,7 +225,7 @@ static void cc26_forceSubviewAlphas(UIView *view) {
     if (routingIvar) routingButton = object_getIvar(self, routingIvar);
 
     CGFloat btnX = (prefBtnX >= 0) ? prefBtnX : 85.0;
-    CGFloat btnY = (prefBtnY >= 0) ? prefBtnY : (topRowHeight - btnSize) / 2.0;
+    CGFloat btnY = (prefBtnY >= 0) ? prefBtnY : artY + (artSize - btnSize) / 2.0;
 
     if (routingButton) {
         routingButton.alpha = 1.0;
@@ -515,6 +527,8 @@ static BOOL cc26ControlsLayoutInProgress = NO;
         [headerView setNeedsLayout];
         [headerView layoutIfNeeded];
     }
+
+    self.clipsToBounds = NO;
 
     // Position transportControlsView: centered at bottom
     UIView *transportView = nil;
