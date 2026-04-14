@@ -78,6 +78,9 @@ static inline UIColor *colorFromHexString(NSString *hexString) {
 @interface CC26BlurListController : CC26Controller
 @end
 
+@interface CC26MediaListController : CC26Controller
+@end
+
 @interface CC26SwitchCell : PSSwitchTableCell
 @end
 

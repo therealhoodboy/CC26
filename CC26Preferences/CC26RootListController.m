@@ -168,6 +168,15 @@
 }
 @end
 
+@implementation CC26MediaListController
+- (NSArray *)specifiers {
+	if (!_specifiers) {
+		_specifiers = [self loadSpecifiersFromPlistName:@"MediaPlayer" target:self];
+	}
+	return _specifiers;
+}
+@end
+
 @implementation CC26SwitchCell
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier specifier:(PSSpecifier *)specifier {
     self = [super initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:reuseIdentifier specifier:specifier];
