@@ -1,64 +1,6 @@
 #import "Tweak.h"
 
-#pragma mark - Calculation of border radius for different modules
-
-CGFloat calculateArea(CGRect visibleRect) {
-    return visibleRect.size.width * visibleRect.size.height;
-}
-
-CGFloat calculateAspect(CGRect visibleRect) {
-    CGFloat width = visibleRect.size.width;
-    CGFloat height = visibleRect.size.height;
-    return (width > 0 && height > 0) ? (width / height) : 1.0;
-}
-
-CGFloat roundedToTwoDecimals(CGFloat value) {
-    return round(value * 100.0) / 100.0;
-}
-
-CGFloat calculatedRadius(CGRect visibleRect, CGFloat fallbackRadius) {
-    CGFloat width = visibleRect.size.width;
-    CGFloat height = visibleRect.size.height;
-    CGFloat aspect = roundedToTwoDecimals(calculateAspect(visibleRect));
-    CGFloat area = calculateArea(visibleRect);
-
-    // 💡 Logging (optional)
-    // NSLog(@"[Radius] w:%.1f h:%.1f aspect:%.2f area:%.0f", width, height, aspect, area);
-
-    if (CGSizeEqualToSize(visibleRect.size, [UIScreen mainScreen].bounds.size) || width <= 60 || height <= 60)
-        return fallbackRadius;
-
-    if (aspect == 1.00 && height <= 73)
-        return fminf(width, height) / 2.0;
-
-    if (aspect == 1.00 && width == height)
-        return fminf(width, height) / 4.0;   
-
-    //Slider vertical
-   if (aspect >= 0.44 && aspect <= 0.54)
-       return fminf(width, height) / 2.0;
-
-    //Slider horizontal
-    if (aspect >= 0.28 && aspect <= 0.32)
-        return fminf(width, height) / 2.0;    
-
-    if (aspect >= 2.18 && aspect <= 2.22)
-        return fminf(width, height) / 2.0;    
-
-    if (aspect >= 2.15 && aspect <= 2.17 )
-        return fminf(width, height) / 2.0;      
-
-    if (area == 48600 || area == 38745)
-        return fminf(width, height) / 2.0;
-
-    if (aspect >= 3.50 && aspect <= 4.00)    
-        return fminf(width, height) / 4.0;
-
-    if (width == height && height <= 85)
-        return fminf(width, height) / 4.0;
-
-    return 65.0;
-}
+#pragma mark - Border radius helpers
 
 CGFloat getModuleRadius(UIView *moduleView) {
     CGFloat width = moduleView.frame.size.width;
@@ -73,14 +15,6 @@ CGFloat getModuleRadius(UIView *moduleView) {
         return width / 4;
     }
     return 0; // may need more cases for odd shaped modules such as CCSupport's 2x4 module
-}
-
-CGFloat calculatedRadiusForLayer(CALayer *layer, CGFloat fallbackRadius) {
-    CGRect rect = layer.bounds;
-    if (CGRectIsEmpty(rect)) {
-        rect = layer.frame;
-    }
-    return calculatedRadius(rect, fallbackRadius);
 }
 
 NSArray *findAllSubviewsOfClass(UIView *view, Class cls) {
@@ -648,148 +582,126 @@ static BOOL cc26ControlsLayoutInProgress = NO;
 }
 %end
 
-BOOL isSubviewOfType(UIView *view, NSArray<Class> *targetClasses) {
-    if (!view) return NO;
-
-    // Check if this view is one of the target classes
-    for (Class targetClass in targetClasses) {
-        if ([view isKindOfClass:targetClass]) {
-            return YES;
-        }
-    }
-
-    // Recursively check all subviews
-    for (UIView *subview in view.subviews) {
-        if (isSubviewOfType(subview, targetClasses)) {
-            return YES;
-        }
-    }
-    return NO;
-}
 
 %hook CCUIContentModuleContentContainerView
-void applyBorderToSpecialViews(UIView *view, BOOL expanded) {
-    if (!view) return;
 
-    CGFloat radius = 65.0;
-    BOOL shouldApply = NO;
-
-    if ([view isKindOfClass:%c(FCUIActivityControl)]) {
-        radius = 35;
-        shouldApply = YES; // immer Rahmen
-    } else if ([view isKindOfClass:%c(MRUNowPlayingView)]) {
-        radius = 65;
-        shouldApply = expanded; // nur bei expanded!
-    }
-
-    if (shouldApply) {
-        view.layer.cornerRadius = radius;
-        view.layer.borderWidth = 2.0;
-        view.layer.continuousCorners = YES;
-        view.layer.masksToBounds = YES;
-        view.layer.borderColor = [UIColor colorWithWhite:0.5 alpha:0.3].CGColor;
-        NSLog(@"[CC26] Rahmen auf %@ gesetzt (Radius %.1f, expanded: %d): %@", NSStringFromClass([view class]), radius, expanded, view);
-    }
-
-    for (UIView *subview in view.subviews) {
-        applyBorderToSpecialViews(subview, expanded);
+static void cc26_applyRadiusToInnerViews(UIView *view, CGFloat radius, int depth) {
+    if (!view || depth > 6) return;
+    view.layer.cornerRadius = radius;
+    view.layer.continuousCorners = YES;
+    view.clipsToBounds = YES;
+    for (UIView *sub in view.subviews) {
+        cc26_applyRadiusToInnerViews(sub, radius, depth + 1);
     }
 }
 
+- (void)layoutSubviews {
+    %orig;
 
-- (void)layoutSubviews { // Hate to use this method, but only one that doesn't cause visual glitches
     BOOL opened = MSHookIvar<BOOL>(self, "_expanded");
-    int radius = opened ? 65 : getModuleRadius(self); 
-    dispatch_async(dispatch_get_main_queue(), ^{
-        applyBorderToSpecialViews(self, opened);
-    });
+    BOOL containsMedia = (findSubviewOfClass(self, %c(MRUNowPlayingView)) != nil);
+    BOOL containsSlider = (findSubviewOfClass(self, %c(CCUIContinuousSliderView)) != nil);
+    BOOL containsSteppedSlider = (findSubviewOfClass(self, %c(CCUISteppedSliderView)) != nil);
+    BOOL containsFocus = (findSubviewOfClass(self, %c(FCUIActivityListContentView)) != nil);
+    BOOL containsAnySlider = containsSlider || containsSteppedSlider;
 
-    NSArray<Class> *suppressedClasses = @[
-        %c(CCUIContinuousSliderView),
-        %c(MRUNowPlayingView),
-        %c(FCUIActivityListContentView)
-    ];
-    if (opened) {
-    UIView *npv = findSubviewOfClass(self, %c(MRUNowPlayingView));
-    if (npv) {
-        npv.layer.cornerRadius = 65;
-        npv.layer.borderWidth = 2.0;
-        npv.layer.continuousCorners = YES;
-        npv.layer.masksToBounds = YES;
-        npv.layer.borderColor = [UIColor colorWithWhite:0.5 alpha:0.3].CGColor;
-        NSLog(@"[CC26] Manuell: Rahmen auf NowPlayingView gesetzt: %@", npv);
+    CGFloat W = self.bounds.size.width;
+    CGFloat H = self.bounds.size.height;
+    CGFloat minDim = fminf(W, H);
+
+    // --- Determine container radius ---
+    // Media module takes priority (it contains sliders internally when expanded)
+    BOOL isStandaloneSlider = containsAnySlider && !containsMedia;
+    CGFloat radius;
+    if (isStandaloneSlider) {
+        // Standalone sliders: fully rounded (half of shorter side) — never elliptic
+        radius = minDim / 2.0;
+    } else if (opened) {
+        radius = 65.0;
     } else {
-        NSLog(@"[CC26] ⚠️ NowPlayingView nicht gefunden (zu früh?)");
+        radius = getModuleRadius(self);
     }
-}
 
+    // --- Container border ---
+    // Suppress container border for media/slider/focus when expanded (they handle their own)
+    BOOL suppressContainerBorder = opened && (containsMedia || isStandaloneSlider || containsFocus);
+    CGFloat containerBorderWidth = suppressContainerBorder ? 0.0 : 2.0;
 
-    // Überprüfe, ob eine der Subviews (auch tief verschachtelt) eine der Zielklassen ist
-    BOOL isSuppressedType = isSubviewOfType(self, suppressedClasses);
-       
-    CGFloat borderWidth = (opened && isSuppressedType) ? 0.0 : 2.0;
     self.clipsToBounds = YES;
-    if (opened && isSubviewOfType(self, @[ %c(MRUNowPlayingView) ])) {
-    radius = 65;
-}
     self.layer.cornerRadius = radius;
-    self.layer.continuousCorners = YES; // Smooth corner into straight edges!!
-    self.layer.borderWidth = borderWidth;
+    self.layer.continuousCorners = YES;
+    self.layer.borderWidth = containerBorderWidth;
     self.layer.borderColor = [UIColor colorWithWhite:0.5 alpha:0.3].CGColor;
     self.layer.masksToBounds = YES;
-    if (self.subviews.count == 1) {
-        UIView *subview1 = [self subviews][0];
-       // subview1.layer.borderWidth = 2.0;
-       // subview1.layer.continuousCorners = YES;
-        if ([[subview1 subviews] count] >= 1) {
-            UIView *subview2 = [subview1 subviews][0];
-            if ([subview2 isKindOfClass:%c(CCUIContinuousSliderView)]) { // Volume Slider
-                [subview2 setClipsToBounds:YES];
-                [[subview2 layer] setCornerRadius:radius];
-                subview2.layer.continuousCorners = YES; 
-                subview2.layer.borderWidth = 1.0; 
-                subview2.layer.borderColor = [UIColor colorWithWhite:0.5 alpha:0.3].CGColor;       
-            } else {
-                if ([[subview2 subviews] count] > 0) {
-                    UIView *subview3 = [subview2 subviews][0];
-                     subview3.layer.continuousCorners = YES; 
-                     subview3.layer.borderWidth = 1.0; 
-                     subview3.layer.cornerRadius = radius; 
-                     subview3.layer.borderColor = [UIColor colorWithWhite:0.5 alpha:0.3].CGColor;   
-                    if ([[subview3 subviews] count] > 0) {
-                        UIView *subview4 = [subview3 subviews][0];
-                         subview4.layer.continuousCorners = YES; 
-                         subview4.layer.borderWidth = 1.0; 
-                         subview4.layer.cornerRadius = radius;  
-                         subview4.layer.borderColor = [UIColor colorWithWhite:0.5 alpha:0.3].CGColor;
-                        if ([[subview4 subviews] count] > 0) {
-                            UIView *subview5 = [subview4 subviews][0];
-                            
-                            if ([subview5 isKindOfClass: %c(MTMaterialView)]) {
-                                [[subview5 layer] setCornerRadius:radius];
-                                subview5.layer.continuousCorners = YES;
-                                subview5.layer.borderWidth = 1.0; 
-                                subview5.layer.cornerRadius = radius;
-                                subview5.layer.borderColor = [UIColor colorWithWhite:0.5 alpha:0.3].CGColor;
-                            }
-                        }
-                    }
-                }
+
+    // --- Slider inner views: fully rounded based on their own bounds ---
+    if (containsSlider) {
+        NSArray *sliders = findAllSubviewsOfClass(self, %c(CCUIContinuousSliderView));
+        for (UIView *slider in sliders) {
+            CGFloat sliderMin = fminf(slider.bounds.size.width, slider.bounds.size.height);
+            CGFloat sliderRadius = sliderMin / 2.0;
+            slider.layer.cornerRadius = sliderRadius;
+            slider.layer.continuousCorners = YES;
+            slider.clipsToBounds = YES;
+            // Only add border on standalone sliders, not sliders inside media
+            if (isStandaloneSlider) {
+                slider.layer.borderWidth = 1.0;
+                slider.layer.borderColor = [UIColor colorWithWhite:0.5 alpha:0.3].CGColor;
             }
         }
-    } else if (self.subviews.count > 1) {
-        UIView *subview = [self subviews][1];
-        if ([subview isKindOfClass: %c(CCUIContinuousSliderView)]) {
-            [[subview layer] setCornerRadius:radius];
-            subview.layer.continuousCorners = YES;
-            subview.layer.borderWidth = 1.0;
-            subview.layer.cornerRadius = radius;
-            subview.layer.borderColor = [UIColor colorWithWhite:0.5 alpha:0.3].CGColor;
-           // subview.clipsToBounds = YES;
+        // MTMaterialView backgrounds: use THEIR OWN bounds for radius, not container's
+        NSArray *materials = findAllSubviewsOfClass(self, %c(MTMaterialView));
+        for (UIView *mat in materials) {
+            CGFloat matMin = fminf(mat.bounds.size.width, mat.bounds.size.height);
+            mat.layer.cornerRadius = matMin / 2.0;
+            mat.layer.continuousCorners = YES;
+            mat.clipsToBounds = YES;
         }
     }
-    NSLog(@"[CC26] Module View: %@ – cornerRadius gesetzt auf %d", self, radius);
 
+    // --- Stepped slider inner views (e.g. ringer toggle) ---
+    if (containsSteppedSlider) {
+        NSArray *steppedSliders = findAllSubviewsOfClass(self, %c(CCUISteppedSliderView));
+        for (UIView *slider in steppedSliders) {
+            CGFloat sliderMin = fminf(slider.bounds.size.width, slider.bounds.size.height);
+            CGFloat sliderRadius = sliderMin / 2.0;
+            slider.layer.cornerRadius = sliderRadius;
+            slider.layer.continuousCorners = YES;
+            slider.clipsToBounds = YES;
+        }
+        // MTMaterialView inside stepped sliders
+        NSArray *materials = findAllSubviewsOfClass(self, %c(MTMaterialView));
+        for (UIView *mat in materials) {
+            CGFloat matMin = fminf(mat.bounds.size.width, mat.bounds.size.height);
+            mat.layer.cornerRadius = matMin / 2.0;
+            mat.layer.continuousCorners = YES;
+            mat.clipsToBounds = YES;
+        }
+    }
+
+    // --- Media module: single border on MRUNowPlayingView only when expanded ---
+    if (containsMedia && opened) {
+        UIView *npv = findSubviewOfClass(self, %c(MRUNowPlayingView));
+        if (npv) {
+            npv.layer.cornerRadius = 65.0;
+            npv.layer.continuousCorners = YES;
+            npv.layer.borderWidth = 2.0;
+            npv.layer.borderColor = [UIColor colorWithWhite:0.5 alpha:0.3].CGColor;
+            npv.layer.masksToBounds = YES;
+        }
+    }
+
+    // --- Focus/Activity module ---
+    if (containsFocus) {
+        UIView *focus = findSubviewOfClass(self, %c(FCUIActivityControl));
+        if (focus) {
+            focus.layer.cornerRadius = 35.0;
+            focus.layer.continuousCorners = YES;
+            focus.layer.borderWidth = 2.0;
+            focus.layer.borderColor = [UIColor colorWithWhite:0.5 alpha:0.3].CGColor;
+            focus.layer.masksToBounds = YES;
+        }
+    }
 }
 %end
 
