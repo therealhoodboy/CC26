@@ -1,6 +1,6 @@
 Package: com.cureux.cc26
 Name: CC26
-Version: 0.4.9.9b
+Version: 1.0
 Architecture: iphoneos-arm
 Description: A sleek reimagination of Control Center.
 Maintainer: therealhoodboy

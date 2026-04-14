@@ -1,5 +1,5 @@
 # Set default values (can be overridden by environment)
-DEBUG = 1
+DEBUG = 0
 FINALPACKAGE = 1
 ARCHS = arm64
 TARGET := iphone:clang:14.5:14.0
@@ -27,7 +27,7 @@ include $(THEOS)/makefiles/common.mk
 # Tweak configuration
 TWEAK_NAME = CC26
 $(TWEAK_NAME)_FILES = Tweak.xm
-$(TWEAK_NAME)_CFLAGS = -fobjc-arc -g -Wno-error -fno-modules
+$(TWEAK_NAME)_CFLAGS = -fobjc-arc -Wno-error -fno-modules
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 
