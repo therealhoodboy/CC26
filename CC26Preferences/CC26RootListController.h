@@ -83,3 +83,6 @@ static inline UIColor *colorFromHexString(NSString *hexString) {
 - (NSDictionary *)dictionaryForColor:(UIColor *)color;
 - (void)selectColor;
 @end
+
+@interface CC26CreditCell : PSTableCell
+@end

@@ -99,7 +99,13 @@
 	return [super tableView:tableView cellForRowAtIndexPath:indexPath];
 }
 - (void)openMTACS {
-	[[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"https://twitter.com/mtaborern"] options:@{} completionHandler:nil];
+	[[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"https://github.com/MTACS"] options:@{} completionHandler:nil];
+}
+- (void)openDayanch96 {
+	[[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"https://github.com/dayanch96"] options:@{} completionHandler:nil];
+}
+- (void)openDeveloper {
+	[[UIApplication sharedApplication] openURL:[NSURL URLWithString:@"https://github.com/therealhoodboy"] options:@{} completionHandler:nil];
 }
 @end
 
@@ -237,5 +243,36 @@
 	[colorDict setObject:[NSNumber numberWithFloat:components[1]] forKey:@"green"];
 	[colorDict setObject:[NSNumber numberWithFloat:components[2]] forKey:@"blue"];
 	return colorDict;
+}
+@end
+
+@implementation CC26CreditCell
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier specifier:(PSSpecifier *)specifier {
+	self = [super initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:reuseIdentifier specifier:specifier];
+	if (self) {
+		self.selectionStyle = UITableViewCellSelectionStyleDefault;
+
+		NSString *iconName = specifier.properties[@"icon"];
+		if (iconName) {
+			UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:28 weight:UIImageSymbolWeightRegular];
+			UIImage *icon = [[UIImage systemImageNamed:iconName] imageByApplyingSymbolConfiguration:config];
+			self.imageView.image = icon;
+			self.imageView.tintColor = TINT_COLOR;
+			self.imageView.contentMode = UIViewContentModeScaleAspectFit;
+		}
+
+		self.textLabel.text = specifier.properties[@"label"];
+		self.textLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+
+		NSString *subtitle = specifier.properties[@"subtitle"];
+		if (subtitle) {
+			self.detailTextLabel.text = subtitle;
+			self.detailTextLabel.textColor = [UIColor secondaryLabelColor];
+			self.detailTextLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightRegular];
+		}
+
+		self.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+	}
+	return self;
 }
 @end

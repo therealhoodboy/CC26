@@ -105,41 +105,6 @@ static void cc26_forceSubviewAlphas(UIView *view) {
     }
 }
 
-%hook MRUControlCenterView
-- (void)layoutSubviews {
-    %orig;
-
-    CGFloat moduleWidth = self.bounds.size.width;
-    CGFloat moduleHeight = self.bounds.size.height;
-
-    NSArray *buttons = findAllSubviewsOfClass(self, %c(MRUTransportButton));
-    for (MRUTransportButton *btn in buttons) {
-        // 🎯 Nur den Button nehmen, der *direkt* unter dieser View hängt
-        if ([btn.superview isKindOfClass:[UIView class]] &&
-            btn.superview.superview == self) {
-
-            NSLog(@"[CC26] Found transport button: %@", btn);
-
-            CGFloat buttonWidth = btn.frame.size.width;
-            CGFloat buttonHeight = btn.frame.size.height;
-
-            // 📐 Dynamisch berechnete Position (5% nach links, 89% nach oben)
-            CGFloat buttonX = moduleWidth * 0.63;
-            CGFloat buttonY = moduleHeight * 0.08;
-
-            btn.translatesAutoresizingMaskIntoConstraints = YES;
-            btn.frame = CGRectMake(buttonX, buttonY, buttonWidth, buttonHeight);
-
-            btn.backgroundColor = [UIColor colorWithWhite:0.8 alpha:0.4];
-            btn.layer.cornerRadius = MIN(buttonWidth, buttonHeight) / 2.0;
-            btn.layer.masksToBounds = YES;
-
-            break; // Nur den ersten passenden Button anpassen
-        }
-    }
-}
-%end
-
 %hook MRUNowPlayingHeaderView
 - (void)layoutSubviews {
     %orig;
@@ -205,7 +170,6 @@ static void cc26_forceSubviewAlphas(UIView *view) {
 
     CGFloat artSize = (prefArtSz >= 0) ? prefArtSz : 50.0;
     CGFloat btnSize = (prefBtnSz >= 0) ? prefBtnSz : 42.0;
-    CGFloat topRowHeight = MAX(artSize, btnSize);
 
     CGFloat artX = (prefArtX >= 0) ? prefArtX : 11.0;
     CGFloat artY = (prefArtY >= 0) ? prefArtY : 8.0;
@@ -597,17 +561,6 @@ static BOOL cc26ControlsLayoutInProgress = NO;
 
 
 %hook CCUIContentModuleContentContainerView
-
-static void cc26_applyRadiusToInnerViews(UIView *view, CGFloat radius, int depth) {
-    if (!view || depth > 6) return;
-    view.layer.cornerRadius = radius;
-    view.layer.continuousCorners = YES;
-    view.clipsToBounds = YES;
-    for (UIView *sub in view.subviews) {
-        cc26_applyRadiusToInnerViews(sub, radius, depth + 1);
-    }
-}
-
 - (void)layoutSubviews {
     %orig;
 
@@ -662,14 +615,6 @@ static void cc26_applyRadiusToInnerViews(UIView *view, CGFloat radius, int depth
                 slider.layer.borderColor = [UIColor colorWithWhite:0.5 alpha:0.3].CGColor;
             }
         }
-        // MTMaterialView backgrounds: use THEIR OWN bounds for radius, not container's
-        NSArray *materials = findAllSubviewsOfClass(self, %c(MTMaterialView));
-        for (UIView *mat in materials) {
-            CGFloat matMin = fminf(mat.bounds.size.width, mat.bounds.size.height);
-            mat.layer.cornerRadius = matMin / 2.0;
-            mat.layer.continuousCorners = YES;
-            mat.clipsToBounds = YES;
-        }
     }
 
     // --- Stepped slider inner views (e.g. ringer toggle) ---
@@ -682,7 +627,10 @@ static void cc26_applyRadiusToInnerViews(UIView *view, CGFloat radius, int depth
             slider.layer.continuousCorners = YES;
             slider.clipsToBounds = YES;
         }
-        // MTMaterialView inside stepped sliders
+    }
+
+    // --- MTMaterialView backgrounds: round to their own bounds ---
+    if (containsAnySlider) {
         NSArray *materials = findAllSubviewsOfClass(self, %c(MTMaterialView));
         for (UIView *mat in materials) {
             CGFloat matMin = fminf(mat.bounds.size.width, mat.bounds.size.height);

@@ -35,6 +35,8 @@
             <string>com.cureux.cc26</string>
             <key>height</key>
             <string>60</string>
+            <key>fallbackColor</key>
+            <string>#FFFFFF</string>
             <key>id</key>
             <string>addButtonColor</string>
             <key>key</key>
@@ -51,6 +53,8 @@
             <string>com.cureux.cc26</string>
             <key>height</key>
             <string>60</string>
+            <key>fallbackColor</key>
+            <string>#FF3B30</string>
             <key>id</key>
             <string>powerButtonColor</string>
             <key>key</key>

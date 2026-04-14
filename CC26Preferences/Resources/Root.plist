@@ -61,10 +61,50 @@
 		<dict>
 			<key>cell</key>
 			<string>PSButtonCell</string>
+			<key>cellClass</key>
+			<string>CC26CreditCell</string>
+			<key>label</key>
+			<string>dayanch96</string>
+			<key>subtitle</key>
+			<string>CC18</string>
+			<key>icon</key>
+			<string>person.crop.circle.fill</string>
+			<key>action</key>
+			<string>openDayanch96</string>
+			<key>height</key>
+			<integer>56</integer>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>cellClass</key>
+			<string>CC26CreditCell</string>
 			<key>label</key>
 			<string>MTACS</string>
+			<key>subtitle</key>
+			<string>Outstanding commitment and help</string>
+			<key>icon</key>
+			<string>person.crop.circle.fill</string>
 			<key>action</key>
 			<string>openMTACS</string>
+			<key>height</key>
+			<integer>56</integer>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>cellClass</key>
+			<string>CC26CreditCell</string>
+			<key>label</key>
+			<string>therealhoodboy</string>
+			<key>subtitle</key>
+			<string>Developer</string>
+			<key>icon</key>
+			<string>person.crop.circle.fill</string>
+			<key>action</key>
+			<string>openDeveloper</string>
+			<key>height</key>
+			<integer>56</integer>
 		</dict>
 	</array>
 	<key>title</key>
