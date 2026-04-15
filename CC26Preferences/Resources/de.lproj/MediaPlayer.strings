@@ -1,0 +1,14 @@
+"Artwork — X Position" = "Cover — X-Position";
+"Set to -1 to use default values." = "Auf -1 setzen für Standardwerte.";
+"Artwork — Y Position" = "Cover — Y-Position";
+"Artwork — Size" = "Cover — Größe";
+
+"Routing Button — X Position" = "Routing-Taste — X-Position";
+"Routing Button — Y Position" = "Routing-Taste — Y-Position";
+"Routing Button — Size" = "Routing-Taste — Größe";
+
+"Label — X Position" = "Beschriftung — X-Position";
+"Label — Y Position" = "Beschriftung — Y-Position";
+"Label — Width" = "Beschriftung — Breite";
+"Label — Height" = "Beschriftung — Höhe";
+"Label — Line Spacing" = "Beschriftung — Zeilenabstand";
