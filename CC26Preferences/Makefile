@@ -1,11 +1,11 @@
-ARCHS = arm64
+ARCHS = arm64 arm64e
 TARGET := iphone:clang:14.5:14.0
 
 include $(THEOS)/makefiles/common.mk
 
 BUNDLE_NAME = CC26Preferences
 
-CC26Preferences_FILES = CC26RootListController.m
+CC26Preferences_FILES = CC26RootListController.m CC26LocalizableManager.m
 CC26Preferences_FRAMEWORKS = UIKit
 CC26Preferences_PRIVATE_FRAMEWORKS = Preferences
 CC26Preferences_INSTALL_PATH = /Library/PreferenceBundles

@@ -1,4 +1,5 @@
 #import "Tweak.h"
+#import "CC26Preferences/CC26LocalizableManager.h"
 
 #pragma mark - Border radius helpers
 
@@ -726,7 +727,7 @@ static BOOL cc26ControlsLayoutInProgress = NO;
             power.frame = CGRectMake(view.bounds.size.width - safeRight - buttonSize, yOffset - 10, buttonSize, buttonSize);
 
             if ([[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion:(NSOperatingSystemVersion){14,0,0}]) {
-                UIAction *respringAction = [UIAction actionWithTitle:@"Respring"
+                UIAction *respringAction = [UIAction actionWithTitle:CC26_LOCALIZABLE(@"Respring")
                                                             image:[UIImage systemImageNamed:@"arrow.clockwise.circle"]
                                                         identifier:nil
                                                             handler:^(__kindof UIAction *action) {
@@ -735,7 +736,7 @@ static BOOL cc26ControlsLayoutInProgress = NO;
                     posix_spawn(&pid, ROOT_PATH("/usr/bin/sbreload"), NULL, NULL, (char *const *)args, NULL);
                 }];
 
-                UIAction *uicacheAction = [UIAction actionWithTitle:@"UICache"
+                UIAction *uicacheAction = [UIAction actionWithTitle:CC26_LOCALIZABLE(@"UICache")
                                                             image:[UIImage systemImageNamed:@"paintbrush.fill"]
                                                         identifier:nil
                                                             handler:^(__kindof UIAction *action) {
@@ -744,7 +745,7 @@ static BOOL cc26ControlsLayoutInProgress = NO;
                     posix_spawn(&pid, ROOT_PATH("/usr/bin/uicache"), NULL, NULL, (char *const *)args, NULL);
                 }];
 
-                UIAction *userspaceAction = [UIAction actionWithTitle:@"Userspace Reboot"
+                UIAction *userspaceAction = [UIAction actionWithTitle:CC26_LOCALIZABLE(@"Userspace Reboot")
                                                                 image:[UIImage systemImageNamed:@"bolt.fill"]
                                                         identifier:nil
                                                             handler:^(__kindof UIAction *action) {
@@ -753,7 +754,7 @@ static BOOL cc26ControlsLayoutInProgress = NO;
                     posix_spawn(&pid, ROOT_PATH("/bin/launchctl"), NULL, NULL, (char *const *)args, NULL);
                 }];
 
-                UIMenu *menu = [UIMenu menuWithTitle:@"Choose Action"
+                UIMenu *menu = [UIMenu menuWithTitle:CC26_LOCALIZABLE(@"Choose Action")
                                             children:@[respringAction, uicacheAction, userspaceAction]];
                 [power setMenu:menu];
                 [power setShowsMenuAsPrimaryAction:YES];

@@ -10,4 +10,3 @@ Depends: mobilesubstrate (>= 0.9.5000), firmware (>= 13.0), firmware (<< 18.0)
 Conflicts: com.dvntm.cc18
 Provides: com.cureux.cc26
 Icon: https://raw.githubusercontent.com/therealhoodboy/coreux/7cef61c0b96f05e285d17d030f9135c4e951e420/assets/tweak-icons/cc26.png
-
