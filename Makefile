@@ -1,7 +1,7 @@
 # Set default values (can be overridden by environment)
 DEBUG = 0
 FINALPACKAGE = 1
-ARCHS = arm64
+ARCHS = arm64 arm64e
 TARGET := iphone:clang:14.5:14.0
 INSTALL_TARGET_PROCESSES = SpringBoard Preferences
 
@@ -26,7 +26,7 @@ include $(THEOS)/makefiles/common.mk
 
 # Tweak configuration
 TWEAK_NAME = CC26
-$(TWEAK_NAME)_FILES = Tweak.xm
+$(TWEAK_NAME)_FILES = Tweak.xm CC26Preferences/CC26LocalizableManager.m
 $(TWEAK_NAME)_CFLAGS = -fobjc-arc -Wno-error -fno-modules
 
 include $(THEOS_MAKE_PATH)/tweak.mk

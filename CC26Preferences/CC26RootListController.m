@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 #import "CC26RootListController.h"
+#import "CC26LocalizableManager.h"
 
 @implementation CC26RootListController
 - (instancetype)init {
@@ -266,7 +267,7 @@
 
 		NSString *subtitle = specifier.properties[@"subtitle"];
 		if (subtitle) {
-			self.detailTextLabel.text = subtitle;
+			self.detailTextLabel.text = CC26_LOCALIZABLE(subtitle);
 			self.detailTextLabel.textColor = [UIColor secondaryLabelColor];
 			self.detailTextLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightRegular];
 		}

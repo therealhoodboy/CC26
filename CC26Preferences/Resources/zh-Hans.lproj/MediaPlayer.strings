@@ -1,0 +1,14 @@
+"Artwork — X Position" = "专辑封面 — 横向位置";
+"Set to -1 to use default values." = "设置 -1 为使用默认值";
+"Artwork — Y Position" = "专辑封面 — 纵向位置";
+"Artwork — Size" = "专辑封面 — 大小设置";
+
+"Routing Button — X Position" = "路由按钮 — 横向位置";
+"Routing Button — Y Position" = "路由按钮 — 纵向位置";
+"Routing Button — Size" = "路由按钮 — 大小设置";
+
+"Label — X Position" = "标签文本 — 横向位置";
+"Label — Y Position" = "标签文本 — 纵向位置";
+"Label — Width" = "标签文本 — 宽度设置";
+"Label — Height" = "标签文本 — 高度设置";
+"Label — Line Spacing" = "标签文本 — 行的间距";
